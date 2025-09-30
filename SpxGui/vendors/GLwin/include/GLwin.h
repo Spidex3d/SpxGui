@@ -8,6 +8,9 @@
 extern "C" {
 #endif
 
+
+	// Simple test function to verify the library is linked correctly
+
 	void GLwinHelloFromGLwin();
 
     // Opaque window structure

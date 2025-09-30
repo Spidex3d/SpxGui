@@ -26,6 +26,9 @@
     <ClInclude Include="include\SpxGui.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\SpxGuiWidgets.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Library Include="vendors\GLwin\lib\GLwin.lib" />

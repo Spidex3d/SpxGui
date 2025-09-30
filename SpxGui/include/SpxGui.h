@@ -1,14 +1,14 @@
 #pragma once
 #include "glad\glad.h" // Include glad for OpenGL function loading
 #include <vector>
+#include <algorithm>
 #include <string>
+#include "../vendors/GLwin/include/GLwin.h"
 #include "stb\stb_truetype.h" // Include stb_truetype.h for font rendering
 #include <iostream>
 
 
-void TestSpxGui() {
-	std::cout << "Hello, SpxGui.h file!" << std::endl;
-}
+// Error to fix if you resize the main window befor you move the gui window you cant move it anymore
 
 const char* vertexSrc = R"(
 #version 330 core
@@ -45,14 +45,17 @@ void main() {
     }
 }
 )";
-
 namespace SpxGui { // I have never used namespaces before
 
+// forward declarations
+inline void DrawRect(float x, float y, float w, float h, float r, float g, float b);
+inline void DrawText(float x, float y, const char* txt, float r, float gcol, float b);
+inline void Init(int screenW, int screenH);
 
-    // forward declarations
-    inline void DrawRect(float x, float y, float w, float h, float r, float g, float b);
-    inline void Init(int screenW, int screenH);
 
+
+    
+	// Struct for storing style settings
     struct Style {
         float WindowRounding = 0.0f;
         float WindowBgR = 0.15f;
@@ -67,13 +70,16 @@ namespace SpxGui { // I have never used namespaces before
         float WindowTopButG = 0.25f;
         float WindowTopButB = 0.28f;
     };
-
-    struct Context {
-        Style style;
+	//struct for storage for the main gui window
+    struct SpxGuiWindow {
+        
+		int SpxGuiWinID = 0; // later for multiple windows and so the button knows which window its in 
+        std::string title;
+		bool* open = nullptr; // later for multiple windows
         bool inWindow = false;
-        int screenW = 800;
-        int screenH = 600;
-        // simple window info
+
+		int screenW = 800; // GLwinGetScreenSizeW(window, w); New functions to add we need the screen size from GLwin
+		int screenH = 600; // GLwinGetScreenSizeH(window, h); New functions to add
         float curWinX = 50;
         float curWinY = 50;
         float curWinW = 300;
@@ -92,7 +98,36 @@ namespace SpxGui { // I have never used namespaces before
         stbtt_bakedchar cdata[96]; // ASCII 32..126
         float fontSize = 16.0f;
     };
+	// ----------------------------------------------------------- Test Area -----------------------------------------------------------
+	inline std::vector<SpxGuiWindow> gWindows; // later for multiple windows
+	inline SpxGuiWindow* gCurrent = nullptr; // later for multiple windows
+    Style style;
 
+	// Use this for X and Y coordinates
+	struct SpxVec2 {
+		float                                   x, y;
+		constexpr SpxVec2()                     : x(0), y(0) {}
+		constexpr SpxVec2(float _x, float _y)   : x(_x), y(_y) {}
+		float& operator[](size_t idx) {
+			if (idx == 0) return x;
+			else if (idx == 1) return y;
+			throw std::out_of_range("Index out of range for SpxVec2");
+		}
+        const float& operator[](size_t idx) const {
+            if (idx == 0) return x;
+            else if (idx == 1) return y;
+            throw std::out_of_range("Index out of range for SpxVec2");
+        }
+
+    };
+	// Use this for RGB colors
+	struct SpxVec3 {
+	};
+	// Use this for RGBA colors and XYWH coordinates
+	struct SpxVec4 {
+	};
+   
+	// ----------------------------------------------------------- End Test Area -----------------------------------------------------------
     inline GLuint gShader = 0;
     inline GLint uScreenSizeLoc, uColorLoc;
 
@@ -111,10 +146,11 @@ namespace SpxGui { // I have never used namespaces before
         return s;
     }
 
-    inline Context g;
+   // inline Context g;
+    inline SpxGuiWindow g;
 
     inline void Init(int screenW, int screenH) {
-
+    
         std::cout << "[SpxGui::Init] Initializing with "
             << screenW << "x" << screenH << std::endl;
 
@@ -187,8 +223,6 @@ namespace SpxGui { // I have never used namespaces before
         
     }
 
-    
-
     inline void DrawText(float x, float y, const char* title, float r, float gcol, float b) {
         if (!g.fontTex) return;
 
@@ -241,74 +275,99 @@ namespace SpxGui { // I have never used namespaces before
         glDeleteVertexArrays(1, &vao);
 
     } 
-    
 
     inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
-        g.mouseX = mouseX;
-        g.mouseY = mouseY;
-        g.mouseDown = down;
-        g.mousePressed = pressed;
-        g.mouseReleased = released;
+        for (auto& w : gWindows) {
+            w.mouseX = mouseX;
+            w.mouseY = mouseY;
+            w.mouseDown = down;
+            w.mousePressed = pressed;
+            w.mouseReleased = released;
+        }
     }
+    
+	// Drawing functions default window 
+    inline void Begin(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
 
-	// Drawing functions
-    inline void Begin(const char* title, bool* p_open = nullptr) {
+		auto it = std::find_if(gWindows.begin(), gWindows.end(),
+			[&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
 
-        g.inWindow = true;
-        float btnSize = g.headerHeight - 6.0f;  // padding
-        float btnX = g.curWinX + g.curWinW - btnSize - 4.0f;
-        float btnY = g.curWinY + 3.0f;
+        if (it == gWindows.end()) {
+            gWindows.push_back(SpxGuiWindow());
+            gWindows.back().SpxGuiWinID = SpxGuiWinID;
+            gWindows.back().title = title;
+            gWindows.back().open = p_open;
+            gCurrent = &gWindows.back();
 
+        }
+        else {
+            gCurrent = &(*it);
+			gCurrent->title = title; // update title
+			gCurrent->open = p_open; // update open pointer
 
-        // Draw background rect
-        DrawRect(g.curWinX, g.curWinY, g.curWinW, g.curWinH,g.style.WindowBgR, g.style.WindowBgG, g.style.WindowBgB);
-        // Header
-        DrawRect(g.curWinX, g.curWinY, g.curWinW, g.headerHeight, g.style.WindowTopBarR, g.style.WindowTopBarG, g.style.WindowTopBarB);
-        DrawRect(g.curWinX, g.curWinY, g.curWinW - 280, g.headerHeight, g.style.WindowTopButR, g.style.WindowTopButG, g.style.WindowTopButB);
-        DrawRect(btnX, btnY, btnSize, btnSize, g.style.WindowTopButR, g.style.WindowTopButG, g.style.WindowTopButB);
+           
+        }
+
+        if (p_open && !p_open) {
+            gCurrent = nullptr;
+            return;
+        }       
+
+		gCurrent->inWindow = true;  
+
+        // background
+        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->curWinH,
+            style.WindowBgR, style.WindowBgG, style.WindowBgB);
+
+        // header
+        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->headerHeight,
+            style.WindowTopBarR, style.WindowTopBarG, style.WindowTopBarB);
+
+        if (p_open) {
+            float btnSize = gCurrent->headerHeight - 6.0f;
+            float btnX = gCurrent->curWinX + gCurrent->curWinW - btnSize - 4.0f;
+            float btnY = gCurrent->curWinY + 3.0f;
+
+            bool hover = (gCurrent->mouseX >= btnX && gCurrent->mouseX <= btnX + btnSize &&
+                gCurrent->mouseY >= btnY && gCurrent->mouseY <= btnY + btnSize);
+
+            float cr = style.WindowTopButR, cg = style.WindowTopButG, cb = style.WindowTopButB;
+            if (hover) { cr = 0.8f; cg = 0.2f; cb = 0.2f; }
+
+            DrawRect(btnX, btnY, btnSize, btnSize, cr, cg, cb);
+            DrawText(btnX + 4, btnY - 2, "X", 1, 1, 1);
+
+            if (hover && gCurrent->mousePressed) {
+                *p_open = false;
+            }
+        }
 
         // Handle dragging
-        bool hoverHeader =
-            (g.mouseX >= g.curWinX && g.mouseX <= g.curWinX + g.curWinW &&
-                g.mouseY >= g.curWinY && g.mouseY <= g.curWinY + g.headerHeight);
+        bool overHeader =
+            (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
+                gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
 
-        if (hoverHeader && g.mousePressed) {
-            g.dragging = true;
-            g.dragOffsetX = g.mouseX - g.curWinX;
-            g.dragOffsetY = g.mouseY - g.curWinY;
+        if (overHeader && gCurrent->mousePressed) {
+            gCurrent->dragging = true;
+            gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
+            gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
         }
-        if (g.mouseReleased) {
-            g.dragging = false;
+        if (gCurrent->mouseReleased) gCurrent->dragging = false;
+        if (gCurrent->dragging && gCurrent->mouseDown) {
+            gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
+            gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
         }
-        if (g.dragging && g.mouseDown) {
-            g.curWinX = g.mouseX - g.dragOffsetX;
-            g.curWinY = g.mouseY - g.dragOffsetY;
-        }
+
 
 		// Draw title text
-        DrawText(g.curWinX + 25, g.curWinY + 2, title, 1.0f, 1.0f, 1.0f);
-
-        // -- - Close Button-- -
-            if (p_open) {
-                               
-                // check mouse over
-                bool hover = (g.mouseX >= btnX && g.mouseX <= btnX + btnSize &&
-                    g.mouseY >= btnY && g.mouseY <= btnY + btnSize);
-
-                // click
-                if (hover && g.mousePressed) {
-                    *p_open = false; // close the window
-                }
-
-                // draw "X" with text (simplest way)
-            }
-          DrawText(btnX + 5, btnY - 4, "X", 1.0f, 1.0f, 1.0f);
+        DrawText(gCurrent->curWinX + 8, gCurrent->curWinY + 4, title, 1, 1, 1);	 
         
     }
 	// End the current window
     inline void End() {
-        if (!g.inWindow) return;
-        g.inWindow = false;
+        if (!gCurrent) return;
+        gCurrent->inWindow = false;
+		gCurrent = nullptr;
         //std::cout << "[End Window]" << std::endl;
     }
 
@@ -322,7 +381,7 @@ namespace SpxGui { // I have never used namespaces before
             std::cout << "  TextColored(" << r << "," << g << "," << b << "): " << txt << std::endl;
     }
 
-    inline Style& GetStyle() { return g.style; }
+    inline Style& GetStyle() { return style; }
 
     inline void DrawRect(float x, float y, float w, float h, float r, float g, float b) {
         float verts[] = {
@@ -346,9 +405,7 @@ namespace SpxGui { // I have never used namespaces before
         glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_DYNAMIC_DRAW);
 
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-
-        
+        glEnableVertexAttribArray(0);       
 
         glUseProgram(gShader);
         glUniform1i(glGetUniformLocation(gShader, "useTex"), 0); // solid

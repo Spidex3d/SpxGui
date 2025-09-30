@@ -140,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\SpxGui.h" />
+    <ClInclude Include="include\SpxGuiWidgets.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="vendors\GLwin\lib\GLwin.lib" />

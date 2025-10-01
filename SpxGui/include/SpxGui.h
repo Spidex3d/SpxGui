@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <string>
 #include "../vendors/GLwin/include/GLwin.h"
+#include "stb/stb_image.h" // Include stb_image.h for image loading
 #include "stb\stb_truetype.h" // Include stb_truetype.h for font rendering
 #include <iostream>
 
@@ -34,14 +35,20 @@ out vec4 FragColor;
 
 uniform sampler2D uTex;
 uniform vec3 uColor;
-uniform int useTex;   // 0 = solid color, 1 = use texture alpha
+uniform int useTex;   // 0 = solid, 1 = font alpha, 2 = full image
 
 void main() {
-    if (useTex == 1) {
-        float alpha = texture(uTex, TexCoord).r;
-        FragColor = vec4(uColor, alpha);
-    } else {
+    if (useTex == 0) {
+        // solid color
         FragColor = vec4(uColor, 1.0);
+    }
+     else if (useTex == 1) {
+        // font rendering with alpha from texture
+        float alpha = texture(uTex, TexCoord).r; // assuming font atlas is in red channel         
+        FragColor = vec4(uColor, alpha);
+    } else if(useTex == 2) {
+        // normal RGBA image    
+        FragColor = texture(uTex, TexCoord);
     }
 }
 )";
@@ -51,8 +58,6 @@ namespace SpxGui { // I have never used namespaces before
 inline void DrawRect(float x, float y, float w, float h, float r, float g, float b);
 inline void DrawText(float x, float y, const char* txt, float r, float gcol, float b);
 inline void Init(int screenW, int screenH);
-
-
 
     
 	// Struct for storing style settings
@@ -83,7 +88,7 @@ inline void Init(int screenW, int screenH);
         float curWinX = 50;
         float curWinY = 50;
         float curWinW = 300;
-        float curWinH = 200;
+        float curWinH = 400;
         // header bar
         float headerHeight = 24.0f;
         bool dragging = false;
@@ -125,6 +130,14 @@ inline void Init(int screenW, int screenH);
 	};
 	// Use this for RGBA colors and XYWH coordinates
 	struct SpxVec4 {
+	};
+
+	struct Image {
+		GLuint textureID = 0;
+		int width = 0 ;
+		int height = 0;
+		int ColIndex = 0; // later for multiple colors in one texture
+		GLenum i_format; // later for different image formats
 	};
    
 	// ----------------------------------------------------------- End Test Area -----------------------------------------------------------
@@ -222,6 +235,48 @@ inline void Init(int screenW, int screenH);
         glUniform1i(glGetUniformLocation(gShader, "uTex"), 0);
         
     }
+	// ------------------------------------------------ Images ------------------------------------------------
+    //GLuint textureID;
+        //int width; int height; int ColIndex; // later for multiple colors in one texture
+        //int i_formatted; // later for different image formats
+    
+    inline unsigned int LoadTextuer(const std::string& filePath, Image& img) {
+        
+		glGenTextures(1, &img.textureID);
+		
+		// load and generate the texture
+		unsigned char* data = stbi_load(filePath.c_str(), &img.width, &img.height, &img.ColIndex, 0);
+        
+        if (data) {
+            std::cout << "Loaded texture: " << filePath
+                << " (" << img.width << " x " << img.height
+                << ", channels= " << img.ColIndex << ")\n";
+        
+			if (img.ColIndex == 4)
+				img.i_format = GL_RGBA;
+			else if (img.ColIndex == 3)
+				img.i_format = GL_RGB;
+			else if (img.ColIndex == 1)
+				img.i_format = GL_RED;
+			else
+				std::cerr << "Failed to load image (Unknown format): " << filePath << std::endl;
+
+			glBindTexture(GL_TEXTURE_2D, img.textureID);
+			glTexImage2D(GL_TEXTURE_2D, 0, img.i_format, img.width, img.height, 0, img.i_format, GL_UNSIGNED_BYTE, data);
+            // set the texture wrapping/filtering options (on the currently bound texture object)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+			stbi_image_free(data);
+        }
+        else {
+			std::cerr << "Failed to load image: " << filePath << std::endl;
+			stbi_image_free(data);
+        }
+		return img.textureID;
+    }
 
     inline void DrawText(float x, float y, const char* title, float r, float gcol, float b) {
         if (!g.fontTex) return;
@@ -304,8 +359,7 @@ inline void Init(int screenW, int screenH);
             gCurrent = &(*it);
 			gCurrent->title = title; // update title
 			gCurrent->open = p_open; // update open pointer
-
-           
+                       
         }
 
         if (p_open && !p_open) {
@@ -358,7 +412,6 @@ inline void Init(int screenW, int screenH);
             gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
         }
 
-
 		// Draw title text
         DrawText(gCurrent->curWinX + 8, gCurrent->curWinY + 4, title, 1, 1, 1);	 
         
@@ -369,16 +422,6 @@ inline void Init(int screenW, int screenH);
         gCurrent->inWindow = false;
 		gCurrent = nullptr;
         //std::cout << "[End Window]" << std::endl;
-    }
-
-    inline void Text(const char* txt) {
-        if (SpxGui::g.inWindow)
-            std::cout << "  Text: " << txt << std::endl;
-    }
-
-    inline void TextColored(float r, float g, float b, const char* txt) {
-        if (SpxGui::g.inWindow)
-            std::cout << "  TextColored(" << r << "," << g << "," << b << "): " << txt << std::endl;
     }
 
     inline Style& GetStyle() { return style; }
@@ -413,7 +456,49 @@ inline void Init(int screenW, int screenH);
         glUniform3f(uColorLoc, r, g, b);
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
+      
 
+        glUniform1i(glGetUniformLocation(gShader, "useTex"), 0); // reset
+
+    }
+	// use for drawing images in the gui
+    inline void DrawImage(unsigned int texID, float x, float y, float w, float h) {
+        glUseProgram(gShader);
+        glUniform2f(uScreenSizeLoc, (float)g.screenW, (float)g.screenH);
+        glUniform1i(glGetUniformLocation(gShader, "useTex"), 2);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texID);      
+
+        float verts[] = {
+            // pos        // uv
+            x,     y,     0.0f, 0.0f,
+            x + w, y,     1.0f, 0.0f,
+            x + w, y + h, 1.0f, 1.0f,
+
+            x,     y,     0.0f, 0.0f,
+            x + w, y + h, 1.0f, 1.0f,
+            x,     y + h, 0.0f, 1.0f,
+        };
+
+        GLuint vao, vbo;
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glDeleteBuffers(1, &vbo);
+        glDeleteVertexArrays(1, &vao);
+
+        glUniform1i(glGetUniformLocation(gShader, "useTex"), 0); // reset
     }
 
 

@@ -1,18 +1,22 @@
 #pragma once
 #include "SpxGui.h"
+#include <unordered_map>
 
 namespace SpxGui
 {
-	struct SpxButtons
-	{
-        int SpxButtonID = 0;// Add common widget properties here if needed
-		SpxVec2 SpxButtonSize = SpxVec2(100, 30); // default size
-		SpxVec2 SpxButtonPsition = SpxVec2(0, 0); // position relative to window
-	};
-	struct SpxTextBox
-	{
-		int SpxTextBoxID = 0;// Add common widget properties here if needed
-	};
+
+	// we need some defs like SpxTextureID later for images
+
+	//struct SpxButtons
+	//{
+ //       int SpxButtonID = 0;// Add common widget properties here if needed
+	//	SpxVec2 SpxButtonSize = SpxVec2(100, 30); // default size
+	//	SpxVec2 SpxButtonPsition = SpxVec2(0, 0); // position relative to window
+	//};
+	//struct SpxTextBox
+	//{
+	//	int SpxTextBoxID = 0;// Add common widget properties here if needed
+	//};
 
     // Button(const char* label, const ImVec2& size = ImVec2(0, 0));   // button def
        // this needs to go SpxWidgets.h later
@@ -103,6 +107,38 @@ namespace SpxGui
 
         return true;
     }
+
+	//inline int ImageBox(const char* label, const std::string texId, float offsetX, float offsetY, float w, float h) {
+	inline int ImageBox(const std::string texId, float offsetX, float offsetY, float w, float h) {
+		if (!gCurrent) return false;
+		float x = gCurrent->curWinX + offsetX;
+		float y = gCurrent->curWinY + offsetY;
+		bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+		bool clicked = (hover && gCurrent->mousePressed);
+
+		static std::unordered_map<std::string, Image> texCache;
+		Image& img = texCache[texId]; // get or create image in cache
+		if (img.textureID == 0) {
+			LoadTextuer(texId, img); // we need to load the texture here for now
+		}
+
+		//static Image img; // we need to store the texture id somewhere
+		//if (img.textureID == 0) {
+		//	LoadTextuer(texId, img); // we need to load the texture here for now
+		//}
+
+		float r = 0.3f, gcol = 0.3f, b = 0.3f;
+		if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
+		if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
+		DrawRect(x - 2, y - 2, w + 4, h + 4, r, gcol, b);
+				
+		// Image
+		if (img.textureID != 0) {
+			DrawImage(img.textureID, x, y, w, h);
+		}
+		return clicked;
+	}
 
 
 } // namespace MyNamespace

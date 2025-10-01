@@ -1,4 +1,5 @@
 #define STB_TRUETYPE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
 #include <glad/glad.h>
 #include <iostream>
 
@@ -8,12 +9,10 @@
 #include "../SpxGui.h"
 #include "../SpxGuiWidgets.h"
 
-
 int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
 	GLWIN_LOG_INFO("This is an info message.");
 	
-
 	GLWIN_window* window = GLwin_CreateWindow(800, 600, L"Starting GLwin! with Modern OpenGL");
 
 	if (!window) {
@@ -38,12 +37,11 @@ int main() {
 	SpxGui::Init(w, h);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_DEPTH_TEST);
 
 	glGetString(GL_VERSION);
 	std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
 
-
-	//bool ShowLightEditor = true;
 	bool showWin1 = true;
 	bool showWin2 = false;
 	while (!GLwinWindowShouldClose(window)) {
@@ -74,7 +72,6 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glViewport(0, 0, w, h);
 
-
 		// ------------GUI Rendering code ------------
 		
 		if (showWin1) {
@@ -83,7 +80,7 @@ int main() {
 				std::cout << "Add Light clicked\n";
 			}
 			SpxGui::InputText("Light Name", (char*)"This is a Text box", 32, 20, 80, 200, 30);
-			//SpxGui::TextColored(1.0f, 1.0f, 0.0f, "Light Color:", 20, 120);
+			SpxGui::TextColored(1.0f, 1.0f, 0.0f, "Light Color:", 20, 140);
 			SpxGui::SeparatorText("Light Properties", 20, 120, 200);
 			SpxGui::SeparatorLine(20, 130, 200);
 			SpxGui::End();
@@ -93,6 +90,10 @@ int main() {
 			if (SpxGui::Button("Add Texture", 20, 40, 100, 30)) {
 				std::cout << "Add Texture clicked\n";
 			}
+				
+			if (SpxGui::ImageBox("../SpxGui/Textures/Brick.jpg", 20, 80, 200, 200))
+				std::cout << "Image Box clicked\n";
+						
 			SpxGui::End();
 		}
 

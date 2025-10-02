@@ -242,39 +242,43 @@ inline void Init(int screenW, int screenH);
     
     inline unsigned int LoadTextuer(const std::string& filePath, Image& img) {
         
-		glGenTextures(1, &img.textureID);
-		
+		glGenTextures(1, &img.textureID); // Generate a texture ID
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Add this for safety
 		// load and generate the texture
 		unsigned char* data = stbi_load(filePath.c_str(), &img.width, &img.height, &img.ColIndex, 0);
-        
+        std::cout << "Trying to load: " << filePath << std::endl;
         if (data) {
             std::cout << "Loaded texture: " << filePath
                 << " (" << img.width << " x " << img.height
                 << ", channels= " << img.ColIndex << ")\n";
         
-			if (img.ColIndex == 4)
+			if (img.ColIndex == 4) // RGBA png
 				img.i_format = GL_RGBA;
-			else if (img.ColIndex == 3)
+			else if (img.ColIndex == 3) // JPG RGB
 				img.i_format = GL_RGB;
-			else if (img.ColIndex == 1)
+			else if (img.ColIndex == 1) // greyscale
 				img.i_format = GL_RED;
 			else
 				std::cerr << "Failed to load image (Unknown format): " << filePath << std::endl;
+            
 
 			glBindTexture(GL_TEXTURE_2D, img.textureID);
 			glTexImage2D(GL_TEXTURE_2D, 0, img.i_format, img.width, img.height, 0, img.i_format, GL_UNSIGNED_BYTE, data);
             // set the texture wrapping/filtering options (on the currently bound texture object)
+			glGenerateMipmap(GL_TEXTURE_2D); // Generate mipmaps "Esential"
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			stbi_image_free(data);
+			stbi_image_free(data); // Free image data after uploading to GPU
         }
         else {
 			std::cerr << "Failed to load image: " << filePath << std::endl;
 			stbi_image_free(data);
         }
+        std::cout << "Loading textureID: " << img.textureID << std::endl;
+
 		return img.textureID;
     }
 
@@ -304,7 +308,7 @@ inline void Init(int screenW, int screenH);
             stbtt_aligned_quad q;
             stbtt_GetBakedQuad(g.cdata, 512, 512, *p - 32, &xpos, &ypos, &q, 1);
 
-            float quad[] = {
+			float quad[] = { // 6 vertices, each with pos(2) and uv(2)
                 q.x0, q.y0, q.s0, q.t0,
                 q.x1, q.y0, q.s1, q.t0,
                 q.x1, q.y1, q.s1, q.t1,
@@ -469,6 +473,7 @@ inline void Init(int screenW, int screenH);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texID);      
+        glUniform1i(glGetUniformLocation(gShader, "uTex"), 0); // sampler = unit 0
 
         float verts[] = {
             // pos        // uv
@@ -493,7 +498,7 @@ inline void Init(int screenW, int screenH);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
         glEnableVertexAttribArray(1);
 
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_TRIANGLES, 0, 6);      
 
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
@@ -512,61 +517,3 @@ inline void Init(int screenW, int screenH);
 
 
 
-//g.inWindow = true;
-//
-//// --- Close button position ---
-//float btnSize = g.headerHeight - 6.0f;
-//float btnX = g.curWinX + g.curWinW - btnSize - 4.0f;
-//float btnY = g.curWinY + 3.0f;
-//
-//// --- Draw window background ---
-//DrawRect(g.curWinX, g.curWinY, g.curWinW, g.curWinH,
-//    g.style.WindowBgR, g.style.WindowBgG, g.style.WindowBgB);
-//
-//// --- Header bar ---
-//DrawRect(g.curWinX, g.curWinY, g.curWinW, g.headerHeight,
-//    g.style.WindowTopBarR, g.style.WindowTopBarG, g.style.WindowTopBarB);
-//
-//// --- Handle dragging (only if not over close button) ---
-//bool overHeader =
-//(g.mouseX >= g.curWinX && g.mouseX <= g.curWinX + g.curWinW &&
-//    g.mouseY >= g.curWinY && g.mouseY <= g.curWinY + g.headerHeight);
-//
-//bool overClose =
-//(g.mouseX >= btnX && g.mouseX <= btnX + btnSize &&
-//    g.mouseY >= btnY && g.mouseY <= btnY + btnSize);
-//
-//if (overHeader && !overClose && g.mousePressed) {
-//    g.dragging = true;
-//    g.dragOffsetX = g.mouseX - g.curWinX;
-//    g.dragOffsetY = g.mouseY - g.curWinY;
-//}
-//if (g.mouseReleased) {
-//    g.dragging = false;
-//}
-//if (g.dragging && g.mouseDown) {
-//    g.curWinX = g.mouseX - g.dragOffsetX;
-//    g.curWinY = g.mouseY - g.dragOffsetY;
-//}
-//
-//// --- Draw title text ---
-//DrawText(g.curWinX + 25, g.curWinY + 4, title, 1.0f, 1.0f, 1.0f);
-//
-//// --- Close Button ---
-//if (p_open) {
-//    // Change color if hovered
-//    float cr = g.style.WindowTopButR;
-//    float cg = g.style.WindowTopButG;
-//    float cb = g.style.WindowTopButB;
-//    if (overClose) { cr = 0.8f; cg = 0.2f; cb = 0.2f; }
-//
-//    DrawRect(btnX, btnY, btnSize, btnSize, cr, cg, cb);
-//
-//    // Click ? close window
-//    if (overClose && g.mousePressed) {
-//        *p_open = false;
-//    }
-//
-//    // Draw "X"
-//    DrawText(btnX + 5, btnY - 2, "X", 1.0f, 1.0f, 1.0f);
-//}

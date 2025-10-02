@@ -123,10 +123,6 @@ namespace SpxGui
 			LoadTextuer(texId, img); // we need to load the texture here for now
 		}
 
-		//static Image img; // we need to store the texture id somewhere
-		//if (img.textureID == 0) {
-		//	LoadTextuer(texId, img); // we need to load the texture here for now
-		//}
 
 		float r = 0.3f, gcol = 0.3f, b = 0.3f;
 		if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }

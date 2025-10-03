@@ -1,14 +1,18 @@
 #pragma once
 #include "glad\glad.h" // Include glad for OpenGL function loading
+//#include "../vendors/GLwin/include/GLwin.h"
 #include <vector>
 #include <algorithm>
 #include <string>
 #include "../vendors/GLwin/include/GLwin.h"
 #include "stb/stb_image.h" // Include stb_image.h for image loading
 #include "stb\stb_truetype.h" // Include stb_truetype.h for font rendering
+#include <unordered_map>
 #include <iostream>
 
-
+// Excellent resource for learning OpenGL: https://learnopengl.com/
+// Excellent resource for learning modern OpenGL: https://docs.gl/
+// And lets not for get YouTub The Cherno for C++ & openGL channel https://www.youtube.com/@TheCherno
 // Error to fix if you resize the main window befor you move the gui window you cant move it anymore
 
 const char* vertexSrc = R"(
@@ -53,11 +57,14 @@ void main() {
 }
 )";
 namespace SpxGui { // I have never used namespaces before
+   
 
 // forward declarations
 inline void DrawRect(float x, float y, float w, float h, float r, float g, float b);
 inline void DrawText(float x, float y, const char* txt, float r, float gcol, float b);
 inline void Init(int screenW, int screenH);
+inline int gFrameCount = 0; // increments once per frame
+inline int gCallCount = 0;
 
     
 	// Struct for storing style settings
@@ -74,6 +81,14 @@ inline void Init(int screenW, int screenH);
         float WindowTopButR = 1.0f;
         float WindowTopButG = 0.25f;
         float WindowTopButB = 0.28f;
+		// items like buttons, inputbox, ImageBox etc
+        float ItemSpacingX = 8.0f;
+        float ItemSpacingY = 6.0f;
+        float WindowPaddingX = 10.0f;
+        float WindowPaddingY = 28.0f; // leave room for header
+
+        
+		
     };
 	//struct for storage for the main gui window
     struct SpxGuiWindow {
@@ -83,12 +98,15 @@ inline void Init(int screenW, int screenH);
 		bool* open = nullptr; // later for multiple windows
         bool inWindow = false;
 
-		int screenW = 800; // GLwinGetScreenSizeW(window, w); New functions to add we need the screen size from GLwin
-		int screenH = 600; // GLwinGetScreenSizeH(window, h); New functions to add
+		int screenW;  
+		int screenH; 
         float curWinX = 50;
         float curWinY = 50;
         float curWinW = 300;
         float curWinH = 400;
+        // NEW: store last widget size
+        float lastItemW = 0.0f;
+        float lastItemH = 0.0f;
         // header bar
         float headerHeight = 24.0f;
         bool dragging = false;
@@ -98,6 +116,11 @@ inline void Init(int screenW, int screenH);
         bool mouseDown = false;
         bool mousePressed = false;
         bool mouseReleased = false;
+		// cursor for layout
+        float cursorX = 0.0f;
+        float cursorY = 0.0f;
+
+        
         // font data
         GLuint fontTex = 0;
         stbtt_bakedchar cdata[96]; // ASCII 32..126
@@ -161,6 +184,11 @@ inline void Init(int screenW, int screenH);
 
    // inline Context g;
     inline SpxGuiWindow g;
+
+    inline void SetScreenSize(int fbw, int fbh) {
+        g.screenW = fbw;
+        g.screenH = fbh;
+    }
 
     inline void Init(int screenW, int screenH) {
     
@@ -236,13 +264,24 @@ inline void Init(int screenW, int screenH);
         
     }
 	// ------------------------------------------------ Images ------------------------------------------------
+    // global texture cache load texture only once
+	inline std::unordered_map<std::string, Image> GetTextureCache; 
     //GLuint textureID;
         //int width; int height; int ColIndex; // later for multiple colors in one texture
         //int i_formatted; // later for different image formats
     
     inline unsigned int LoadTextuer(const std::string& filePath, Image& img) {
-        
+		// check if texture already loaded
+		auto it = GetTextureCache.find(filePath);
+		if (it != GetTextureCache.end()) {
+			img = it->second;
+			return img.textureID; // return existing texture ID
+		}
+
+
 		glGenTextures(1, &img.textureID); // Generate a texture ID
+        // sets pixel storage modes that affect the operation of subsequent
+        // glReadPixels as well as the unpacking of texture patterns
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Add this for safety
 		// load and generate the texture
 		unsigned char* data = stbi_load(filePath.c_str(), &img.width, &img.height, &img.ColIndex, 0);
@@ -278,7 +317,8 @@ inline void Init(int screenW, int screenH);
 			stbi_image_free(data);
         }
         std::cout << "Loading textureID: " << img.textureID << std::endl;
-
+		// save to cache
+		GetTextureCache[filePath] = img;
 		return img.textureID;
     }
 
@@ -336,15 +376,21 @@ inline void Init(int screenW, int screenH);
     } 
 
     inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
+       
         for (auto& w : gWindows) {
+           
             w.mouseX = mouseX;
             w.mouseY = mouseY;
             w.mouseDown = down;
             w.mousePressed = pressed;
             w.mouseReleased = released;
         }
+        // increment frame count
+        gFrameCount++;
+        // reset call counter for this frame
+        gCallCount = 0;
     }
-    
+	Style gStyle; // global style instance
 	// Drawing functions default window 
     inline void Begin(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
 
@@ -415,6 +461,9 @@ inline void Init(int screenW, int screenH);
             gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
             gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
         }
+		// clamp to screen
+        gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
+        gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
 
 		// Draw title text
         DrawText(gCurrent->curWinX + 8, gCurrent->curWinY + 4, title, 1, 1, 1);	 

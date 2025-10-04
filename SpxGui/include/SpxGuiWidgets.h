@@ -5,10 +5,6 @@
 namespace SpxGui
 {
 	
-
-    // Button(const char* label, const ImVec2& size = ImVec2(0, 0));   // button def
-       // this needs to go SpxWidgets.h later
-   // inline bool Button(const char* label, float offsetX, float offsetY, float w, float h) {
     inline bool Button(const char* label, float w, float h) {
         if (!gCurrent) return false;
 
@@ -36,13 +32,11 @@ namespace SpxGui
 		gCurrent->lastItemW = w;
 		gCurrent->lastItemH = h;
 
-		/*std::cout << "Frame " << SpxGui::gFrameCount
-			<< " | Button: " << label
-			<< " y=" << y
-			<< " cursorY(before)=" << gCurrent->cursorY << std::endl;*/
-
         return clicked;
     }
+	// ----------------------------------------------- Input Text Section ---------------------------------------
+
+
 
 	//inline bool InputText(const char* label, char* buf, size_t buf_size, float offsetX, float offsetY, float w, float h) {
 	inline bool InputText(const char* label, char* buf, size_t buf_size, float w, float h) {
@@ -71,6 +65,178 @@ namespace SpxGui
 
 		return clicked;
 	}
+
+	inline void MultiLineText(int inputIdx, float input, char* inputBuf, size_t bufSize, float w, float h) {
+		if (!gCurrent) return;
+
+		float x = gCurrent->cursorX;
+		float y = gCurrent->cursorY;
+
+		bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+		bool clicked = (hover && gCurrent->mousePressed);
+
+		float r = 0.3f, gcol = 0.3f, b = 0.3f;
+		if (hover) { r = 0.12f; gcol = 0.14f; b = 0.12f; }
+		if (clicked) { r = 0.12f; gcol = 0.12f; b = 0.10f; }
+
+		DrawRect(x, y, w, h, r, gcol, b);
+
+		// Safe formatting
+		if (bufSize > 0) {
+			_snprintf_s(inputBuf, bufSize, _TRUNCATE, "%.3f", input);
+			DrawText(x + 4, y + (h / 4), inputBuf, 1, 1, 1);
+		}
+
+		gCurrent->cursorY += h + gStyle.ItemSpacingY;
+		gCurrent->lastItemW = w;
+		gCurrent->lastItemH = h;
+
+		return;
+	}
+
+	// ----------------------------------------------- Drag Float Section ---------------------------------------
+
+	// This dragfloat add text to the boxes R: 0.0f G: 0.0f B: 0.0f
+	inline void Drag3FloatText(float* v, float wBox = 60, float hBox = 20) {
+		if (!gCurrent) return;
+
+		const char* labels[3] = { "R:", "G:", "B:" };
+		char buf[64];
+
+		float startX = gCurrent->cursorX;
+		float curY = gCurrent->cursorY;
+
+		for (int i = 0; i < 3; i++) {
+			// format into one buffer with label + number
+			snprintf(buf, sizeof(buf), "%s %.3f", labels[i], v[i]);
+
+			float boxX = startX + i * (wBox + gStyle.ItemSpacingX);
+
+			// different tint for each channel
+			float cr = (i == 0) ? 0.4f : 0.2f;
+			float cg = (i == 1) ? 0.4f : 0.2f;
+			float cb = (i == 2) ? 0.4f : 0.2f;
+			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+
+			// vertically center text in the box
+			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
+			DrawText(boxX + 4, textY - 16, buf, 1, 1, 1);
+		}
+
+		gCurrent->cursorY += hBox + gStyle.ItemSpacingY;
+		gCurrent->lastItemW = 3 * wBox + 2 * gStyle.ItemSpacingX;
+		gCurrent->lastItemH = hBox;
+	}
+	
+	// just a standard drag3float with no text
+	inline void Drag3Float(float* v, float wBox = 60, float hBox = 20) {
+		if (!gCurrent) return;
+
+		char buf[64];
+		float startX = gCurrent->cursorX;
+		float curY = gCurrent->cursorY;
+
+		for (int i = 0; i < 3; i++) {
+			// format the number only
+			snprintf(buf, sizeof(buf), "%.3f", v[i]);
+
+			// position of this box
+			float boxX = startX + i * (wBox + gStyle.ItemSpacingX);
+
+			// different background tint per channel (optional)
+			float cr = (i == 0) ? 0.3f : 0.2f;
+			float cg = (i == 1) ? 0.3f : 0.2f;
+			float cb = (i == 2) ? 0.3f : 0.2f;
+
+			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+
+			// center text vertically inside the box
+			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
+			DrawText(boxX + 4, textY - 16, buf, 1, 1, 1);
+		}
+
+		// advance layout cursor
+		gCurrent->cursorY += hBox + gStyle.ItemSpacingY;
+		gCurrent->lastItemW = 3 * wBox + 2 * gStyle.ItemSpacingX;
+		gCurrent->lastItemH = hBox;
+	}
+	// ----------------------------------------------- Drag 4 Float Section ---------------------------------------
+
+	inline void Drag4FloatText(float* v, float wBox = 60, float hBox = 20) {
+		if (!gCurrent) return;
+
+		const char* labels[4] = { "R:", "G:", "B:", "A:" }; // or X Y Z W
+		char buf[64];
+
+		float startX = gCurrent->cursorX;
+		float curY = gCurrent->cursorY;
+
+		for (int i = 0; i < 4; i++) {
+			// format "Label value"
+			snprintf(buf, sizeof(buf), "%s %.3f", labels[i], v[i]);
+
+			// position of this box
+			float boxX = startX + i * (wBox + gStyle.ItemSpacingX);
+
+			// background tint (optional)
+			float cr = (i == 0) ? 0.3f : 0.2f;
+			float cg = (i == 1) ? 0.3f : 0.2f;
+			float cb = (i == 2) ? 0.3f : 0.2f;
+			if (i == 3) { cr = 0.25f; cg = 0.25f; cb = 0.25f; } // neutral for A
+
+			// draw background
+			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+
+			// center text vertically inside the box
+			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
+			DrawText(boxX + 4, textY -16, buf, 1, 1, 1);
+		}
+
+		// advance layout cursor
+		gCurrent->cursorY += hBox + gStyle.ItemSpacingY;
+		gCurrent->lastItemW = 4 * wBox + 3 * gStyle.ItemSpacingX;
+		gCurrent->lastItemH = hBox;
+	}
+
+	// just a standard dragfloat with no text
+	inline void Drag4Float(float* v, float wBox = 60, float hBox = 20) {
+		if (!gCurrent) return;
+
+		v[0], v[1], v[2], v[3];
+
+		char buf[64];
+		float startX = gCurrent->cursorX;
+		float curY = gCurrent->cursorY;
+
+		for (int i = 0; i < 4; i++) {
+			snprintf(buf, sizeof(buf), "%.3f", v[i]);
+			float boxX = startX + i * (wBox + gStyle.ItemSpacingX);
+
+			float cr = (i == 0) ? 0.4f : 0.2f;
+			float cg = (i == 1) ? 0.4f : 0.2f;
+			float cb = (i == 2) ? 0.4f : 0.2f;
+			if (i == 3) { cr = 0.3f; cg = 0.3f; cb = 0.3f; }
+
+			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+						
+			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
+			DrawText(boxX + 6, textY - 16, buf, 1, 1, 1);
+			
+		}
+
+		gCurrent->cursorY += hBox + gStyle.ItemSpacingY;
+		gCurrent->lastItemW = 4 * wBox + 3 * gStyle.ItemSpacingX;
+		gCurrent->lastItemH = hBox;
+	}
+
+	// --------------------------------------- Sliders Section ---------------------------------------
+	inline void Slider() {
+		// Placeholder for future slider implementation
+	}
+	
+	// --------------------------------------- Label Section ---------------------------------------
+
 	// simple text output like a label
 	inline bool ColoredLalel(float r, float gcol, float b, const char* txt) {
 		if (!gCurrent) return false;
@@ -105,7 +271,7 @@ namespace SpxGui
 
 	//inline bool SeparatorText(const char* label, float w) {
 	inline void SeparatorText(const char* label, float w) {
-		//if (!gCurrent) return false;
+
 		if (!gCurrent) return;
 
 		float x = gCurrent->cursorX;
@@ -202,46 +368,51 @@ namespace SpxGui
 	// Error All of the button click hover pos is up the creak 
 
 	inline bool ColorEdit3(const char* label, float col[3]) {
-		//if (!gCurrent) return false;
-		//float x = gCurrent->cursorX;
-		//float y = gCurrent->cursorY;
-		//// Draw label
-		//DrawText(x, y, label, 1, 1, 1);
-		//// Color box
-		//float boxSize = g.fontSize; // square box
-		//float boxX = x + 100; // fixed offset for simplicity
-		//float boxY = y;
-		//DrawRect(boxX, boxY, boxSize, boxSize, col[0], col[1], col[2]);
-		//bool hover = (gCurrent->mouseX >= boxX && gCurrent->mouseX <= boxX + boxSize &&
-		//	gCurrent->mouseY >= boxY && gCurrent->mouseY <= boxY + boxSize);
-		//bool clicked = (hover && gCurrent->mousePressed);
-		//static bool picking = false;
-		//static int pickingComponent = 0; // 0=R,1=G,2=B
-		//if (clicked) {
-		//	picking = true;
-		//	pickingComponent = 0; // start with Red
-		//}
-		//if (gCurrent->mouseReleased) {
-		//	picking = false;
-		//}
-		//if (picking) {
-		//	if (gCurrent->mouseDown) {
-		//		// Adjust current component based on mouse X movement
-		//		float deltaX = gCurrent->mouseX - (boxX + boxSize * 0.5f);
-		//		col[pickingComponent] += deltaX * 0.005f; // sensitivity
-		//		if (col[pickingComponent] < 0.0f) col[pickingComponent] = 0.0f;
-		//		if (col[pickingComponent] > 1.0f) col[pickingComponent] = 1.0f;
-		//	}
-		//	else if (gCurrent->mousePressed) {
-		//		// Cycle to next component on click
-		//		pickingComponent = (pickingComponent + 1) % 3;
-		//	}
-		//}
-		//gCurrent->cursorY += boxSize + gStyle.ItemSpacingY; // move cursor down for next item
-		//gCurrent->lastItemW = (boxX + boxSize) - x;
-		//gCurrent->lastItemH = boxSize;
+		if (!gCurrent) return false;
+		float x = gCurrent->cursorX;
+		float y = gCurrent->cursorY;
+		// Draw label
+		DrawText(x, y, label, 1, 1, 1);
+		// We need a drag3Float for RGB and a drag4Float for RGBA here
+		// we will also need a popup color picker window
+		// we will also need a vertical slider for HSV and Alpha
 
-		//return clicked || picking;
+
+		// Color box
+		float boxSize = g.fontSize; // square box
+		float boxX = x + 100; // fixed offset for simplicity
+		float boxY = y;
+		DrawRect(boxX, boxY, boxSize, boxSize, col[0], col[1], col[2]);
+		bool hover = (gCurrent->mouseX >= boxX && gCurrent->mouseX <= boxX + boxSize &&
+			gCurrent->mouseY >= boxY && gCurrent->mouseY <= boxY + boxSize);
+		bool clicked = (hover && gCurrent->mousePressed);
+		static bool picking = false;
+		static int pickingComponent = 0; // 0=R,1=G,2=B
+		if (clicked) {
+			picking = true;
+			pickingComponent = 0; // start with Red
+		}
+		if (gCurrent->mouseReleased) {
+			picking = false;
+		}
+		if (picking) {
+			if (gCurrent->mouseDown) {
+				// Adjust current component based on mouse X movement
+				float deltaX = gCurrent->mouseX - (boxX + boxSize * 0.5f);
+				col[pickingComponent] += deltaX * 0.005f; // sensitivity
+				if (col[pickingComponent] < 0.0f) col[pickingComponent] = 0.0f;
+				if (col[pickingComponent] > 1.0f) col[pickingComponent] = 1.0f;
+			}
+			else if (gCurrent->mousePressed) {
+				// Cycle to next component on click
+				pickingComponent = (pickingComponent + 1) % 3;
+			}
+		}
+		gCurrent->cursorY += boxSize + gStyle.ItemSpacingY; // move cursor down for next item
+		gCurrent->lastItemW = (boxX + boxSize) - x;
+		gCurrent->lastItemH = boxSize;
+
+		return clicked || picking;
 	}
 
 	// --------------------------------------- Image Section ---------------------------------------

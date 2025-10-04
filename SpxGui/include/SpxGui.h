@@ -1,6 +1,5 @@
 #pragma once
 #include "glad\glad.h" // Include glad for OpenGL function loading
-//#include "../vendors/GLwin/include/GLwin.h"
 #include <vector>
 #include <algorithm>
 #include <string>
@@ -57,16 +56,12 @@ void main() {
 }
 )";
 namespace SpxGui { // I have never used namespaces before
-   
 
 // forward declarations
 inline void DrawRect(float x, float y, float w, float h, float r, float g, float b);
 inline void DrawText(float x, float y, const char* txt, float r, float gcol, float b);
 inline void Init(int screenW, int screenH);
-inline int gFrameCount = 0; // increments once per frame
-inline int gCallCount = 0;
-
-    
+  
 	// Struct for storing style settings
     struct Style {
         float WindowRounding = 0.0f;
@@ -92,44 +87,65 @@ inline int gCallCount = 0;
     };
 	//struct for storage for the main gui window
     struct SpxGuiWindow {
-        
-		int SpxGuiWinID = 0; // later for multiple windows and so the button knows which window its in 
+        int SpxGuiWinID = 0;       // ID for multiple windows
         std::string title;
-		bool* open = nullptr; // later for multiple windows
+        bool* open = nullptr;
         bool inWindow = false;
 
-		int screenW;  
-		int screenH; 
+        // Window position & size
         float curWinX = 50;
         float curWinY = 50;
         float curWinW = 300;
         float curWinH = 400;
-        // NEW: store last widget size
+
+        // Widget layout state
+        float cursorX = 0.0f;
+        float cursorY = 0.0f;
         float lastItemW = 0.0f;
         float lastItemH = 0.0f;
-        // header bar
+
+        // Header bar
         float headerHeight = 24.0f;
         bool dragging = false;
         float dragOffsetX = 0, dragOffsetY = 0;
-        // mouse state
+
+        // Mouse state (copied from global per-frame)
         float mouseX = 0, mouseY = 0;
         bool mouseDown = false;
         bool mousePressed = false;
         bool mouseReleased = false;
-		// cursor for layout
-        float cursorX = 0.0f;
-        float cursorY = 0.0f;
-
         
-        // font data
-        GLuint fontTex = 0;
-        stbtt_bakedchar cdata[96]; // ASCII 32..126
-        float fontSize = 16.0f;
     };
-	// ----------------------------------------------------------- Test Area -----------------------------------------------------------
+    // global-only things into a single Context
+    struct Context {
+        int screenW = 800;
+        int screenH = 600;
+
+        GLuint fontTex = 0;
+        stbtt_bakedchar cdata[96];
+        float fontSize = 16.0f;
+
+        GLuint gShader = 0;
+        GLint uScreenSizeLoc = -1;
+        GLint uColorLoc = -1;
+
+        int frameCount = 0;
+        int callCount = 0;
+    };
+
 	inline std::vector<SpxGuiWindow> gWindows; // later for multiple windows
 	inline SpxGuiWindow* gCurrent = nullptr; // later for multiple windows
     Style style;
+
+    struct Image {
+        GLuint textureID = 0;
+        int width = 0;
+        int height = 0;
+        int ColIndex = 0; // later for multiple colors in one texture
+        GLenum i_format; // later for different image formats
+    };
+
+	// ----------------------------------------------------------- Test Area -----------------------------------------------------------
 
 	// Use this for X and Y coordinates
 	struct SpxVec2 {
@@ -155,15 +171,13 @@ inline int gCallCount = 0;
 	struct SpxVec4 {
 	};
 
-	struct Image {
-		GLuint textureID = 0;
-		int width = 0 ;
-		int height = 0;
-		int ColIndex = 0; // later for multiple colors in one texture
-		GLenum i_format; // later for different image formats
-	};
-   
+    
+	
 	// ----------------------------------------------------------- End Test Area -----------------------------------------------------------
+
+	
+   
+	// Global variables for SpxGui Shader
     inline GLuint gShader = 0;
     inline GLint uScreenSizeLoc, uColorLoc;
 
@@ -183,17 +197,62 @@ inline int gCallCount = 0;
     }
 
    // inline Context g;
-    inline SpxGuiWindow g;
+    inline Context g;
+
+    inline bool LoadDefaultFont(const char* path, float size) {
+        FILE* f = nullptr;
+        errno_t err = fopen_s(&f, path, "rb");
+        if (err != 0 || !f) {
+            std::cerr << "Failed to open font file: " << path << std::endl;
+            return false;
+        }
+
+        std::vector<unsigned char> ttfBuffer(1 << 20);
+        size_t readBytes = fread(ttfBuffer.data(), 1, ttfBuffer.size(), f);
+        fclose(f);
+        if (readBytes == 0) {
+            std::cerr << "Failed to read font file!\n";
+            return false;
+        }
+
+        std::vector<unsigned char> tempBitmap(512 * 512);
+
+        int result = stbtt_BakeFontBitmap(
+            ttfBuffer.data(), 0, size,
+            tempBitmap.data(), 512, 512,
+            32, 96, g.cdata
+        );
+
+        if (result <= 0) {
+            std::cerr << "stbtt_BakeFontBitmap failed!\n";
+            return false;
+        }
+
+        if (g.fontTex) {
+            glDeleteTextures(1, &g.fontTex);
+        }
+
+        glGenTextures(1, &g.fontTex);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glBindTexture(GL_TEXTURE_2D, g.fontTex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 512, 512, 0,
+            GL_RED, GL_UNSIGNED_BYTE, tempBitmap.data());
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        g.fontSize = size;
+        return true;
+    }
 
     inline void SetScreenSize(int fbw, int fbh) {
         g.screenW = fbw;
         g.screenH = fbh;
     }
 
-    inline void Init(int screenW, int screenH) {
+    //inline void Init(int screenW, int screenH) {
+    inline void Init() {
     
-        std::cout << "[SpxGui::Init] Initializing with "
-            << screenW << "x" << screenH << std::endl;
+        std::cout << "[SpxGui::Init] Initializing " << std::endl;
 
         // --- Compile & link shader ---
         GLuint vs = CompileShader(GL_VERTEX_SHADER, vertexSrc);
@@ -219,49 +278,14 @@ inline int gCallCount = 0;
         std::cout << "uScreenSizeLoc=" << uScreenSizeLoc
             << " uColorLoc=" << uColorLoc << std::endl;
 
-		// --- Load font from file --- this needs to be an option setting later
-        FILE* f = nullptr;
-        errno_t err = fopen_s(&f, "C:/Windows/Fonts/arial.ttf", "rb"); // adjust path if needed
-        //errno_t err = fopen_s(&f, "C:/Windows/Fonts/comic.ttf", "rb"); // adjust path if needed
-        if (err != 0 || !f) {
-            std::cerr << "Failed to open font file!" << std::endl;
-            return;
-        }
-
-        // allocate on heap (safer than big stack arrays)
-        std::vector<unsigned char> ttfBuffer(1 << 20);
-        size_t readBytes = fread(ttfBuffer.data(), 1, ttfBuffer.size(), f);
-        fclose(f);
-
-        if (readBytes == 0) {
-            std::cerr << "Failed to read font file!" << std::endl;
-            return;
-        }
-
-        std::vector<unsigned char> tempBitmap(512 * 512);
-
-        int result = stbtt_BakeFontBitmap(
-            ttfBuffer.data(), 0, g.fontSize,
-            tempBitmap.data(), 512, 512,
-            32, 96, g.cdata
-        );
-
-        if (result <= 0) {
-            std::cerr << "stbtt_BakeFontBitmap failed!" << std::endl;
-            return;
-        }
-        glGenTextures(1, &g.fontTex);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glBindTexture(GL_TEXTURE_2D, g.fontTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 512, 512, 0,
-            GL_RED, GL_UNSIGNED_BYTE, tempBitmap.data());
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // --- Load default font ---
+        LoadDefaultFont("C:/Windows/Fonts/arial.ttf", 16.0f);
 
         // tell shader which texture unit the font atlas is bound to
         glUseProgram(gShader);
         glUniform1i(glGetUniformLocation(gShader, "uTex"), 0);
-        
+
+		
     }
 	// ------------------------------------------------ Images ------------------------------------------------
     // global texture cache load texture only once
@@ -285,11 +309,11 @@ inline int gCallCount = 0;
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Add this for safety
 		// load and generate the texture
 		unsigned char* data = stbi_load(filePath.c_str(), &img.width, &img.height, &img.ColIndex, 0);
-        std::cout << "Trying to load: " << filePath << std::endl;
         if (data) {
-            std::cout << "Loaded texture: " << filePath
-                << " (" << img.width << " x " << img.height
-                << ", channels= " << img.ColIndex << ")\n";
+          
+			GLWIN_LOG_INFO("Loaded texture: " << filePath
+				<< " (" << img.width << " x " << img.height
+				<< ", channels= " << img.ColIndex << ")");
         
 			if (img.ColIndex == 4) // RGBA png
 				img.i_format = GL_RGBA;
@@ -377,18 +401,14 @@ inline int gCallCount = 0;
 
     inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
        
-        for (auto& w : gWindows) {
-           
+        for (auto& w : gWindows) { 
             w.mouseX = mouseX;
             w.mouseY = mouseY;
             w.mouseDown = down;
             w.mousePressed = pressed;
             w.mouseReleased = released;
         }
-        // increment frame count
-        gFrameCount++;
-        // reset call counter for this frame
-        gCallCount = 0;
+        
     }
 	Style gStyle; // global style instance
 	// Drawing functions default window 
@@ -474,6 +494,92 @@ inline int gCallCount = 0;
         if (!gCurrent) return;
         gCurrent->inWindow = false;
 		gCurrent = nullptr;
+        //std::cout << "[End Window]" << std::endl;
+    }
+
+    // Drawing functions default window 
+    inline void BeginPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
+
+        auto it = std::find_if(gWindows.begin(), gWindows.end(),
+            [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
+
+        if (it == gWindows.end()) {
+            gWindows.push_back(SpxGuiWindow());
+            gWindows.back().SpxGuiWinID = SpxGuiWinID;
+            gWindows.back().title = title;
+            gWindows.back().open = p_open;
+            gCurrent = &gWindows.back();
+
+        }
+        else {
+            gCurrent = &(*it);
+            gCurrent->title = title; // update title
+            gCurrent->open = p_open; // update open pointer
+
+        }
+
+        if (p_open && !p_open) {
+            gCurrent = nullptr;
+            return;
+        }
+
+        gCurrent->inWindow = true;
+
+        // background
+        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->curWinH,
+            style.WindowBgR, style.WindowBgG, style.WindowBgB);
+
+        // header
+        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->headerHeight,
+            style.WindowTopBarR, style.WindowTopBarG, style.WindowTopBarB);
+
+        if (p_open) {
+            float btnSize = gCurrent->headerHeight - 6.0f;
+            float btnX = gCurrent->curWinX + gCurrent->curWinW - btnSize - 4.0f;
+            float btnY = gCurrent->curWinY + 3.0f;
+
+            bool hover = (gCurrent->mouseX >= btnX && gCurrent->mouseX <= btnX + btnSize &&
+                gCurrent->mouseY >= btnY && gCurrent->mouseY <= btnY + btnSize);
+
+            float cr = style.WindowTopButR, cg = style.WindowTopButG, cb = style.WindowTopButB;
+            if (hover) { cr = 0.8f; cg = 0.2f; cb = 0.2f; }
+
+            DrawRect(btnX, btnY, btnSize, btnSize, cr, cg, cb);
+            DrawText(btnX + 4, btnY - 2, "X", 1, 1, 1);
+
+            if (hover && gCurrent->mousePressed) {
+                *p_open = false;
+            }
+        }
+
+        // Handle dragging
+        bool overHeader =
+            (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
+                gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
+
+        if (overHeader && gCurrent->mousePressed) {
+            gCurrent->dragging = true;
+            gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
+            gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
+        }
+        if (gCurrent->mouseReleased) gCurrent->dragging = false;
+        if (gCurrent->dragging && gCurrent->mouseDown) {
+            gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
+            gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
+        }
+        // clamp to screen
+        gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
+        gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
+
+        // Draw title text
+        DrawText(gCurrent->curWinX + 8, gCurrent->curWinY + 4, title, 1, 1, 1);
+
+    } // End draw pop up
+
+    inline void EndPopUp() {
+        if (!gCurrent) return;
+        gCurrent->inWindow = false;
+        gCurrent = nullptr;
         //std::cout << "[End Window]" << std::endl;
     }
 

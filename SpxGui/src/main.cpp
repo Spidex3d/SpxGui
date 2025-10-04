@@ -10,7 +10,6 @@
 #include "../SpxGuiWidgets.h"
 
 
-
 int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
 	GLWIN_LOG_INFO("This is an info message.");
@@ -38,7 +37,7 @@ int main() {
 	}
 
 	glViewport(0, 0, fbw, fbh);
-	SpxGui::Init(fbw, fbh);
+	SpxGui::Init();
 	// tell SpxGui about the real framebuffer size
 	SpxGui::SetScreenSize(fbw, fbh);
 
@@ -51,8 +50,9 @@ int main() {
 
 	bool showWin1 = true;
 	bool showWin2 = false;
+	bool showColWin1 = false;
 	while (!GLwinWindowShouldClose(window)) {
-		SpxGui::gFrameCount++;
+		
 		GLwinPollEvents(); // New non-blocking event polling
 
 		double mx, my;
@@ -109,16 +109,24 @@ int main() {
 				std::cout << "Clicked color box, current color = "
 					<< lightR << ", " << lightG << ", " << lightB << "\n";
 				
-
 			}
 			
 			SpxGui::End();
 		}
 		if (showWin2) {
 			SpxGui::Begin("Texture Editor", &showWin2, 2);   // will draw rect
-			if (SpxGui::Button("Add Texture", 100, 30)) {
-				std::cout << "Add Texture clicked\n";
-			}
+			float color[4] = { 1.0f, 2.0f, 3.0f, 1.0f };
+			SpxGui::Drag4Float(color, 60, 20);
+
+			float color_t[4] = { 0.2f, 0.5f, 0.8f, 1.0f };
+			SpxGui::Drag4FloatText(color_t);
+
+			float color_r[3] = { 0.2f, 0.5f, 0.8f };
+			SpxGui::Drag3FloatText(color_r);
+
+			float pos[3] = { 1.0f, 2.0f, 3.0f };
+			SpxGui::Drag3Float(pos, 60, 20);
+
 			if (SpxGui::ImageButton("../SpxGui/Textures/Brick.jpg", 50, 50))
 				std::cout << "ImageButton clicked\n";
 			SpxGui::SameLine();
@@ -126,18 +134,30 @@ int main() {
 				std::cout << "ImageButton clicked_01\n";		
 				
 			
-			if (SpxGui::ImageBox("../SpxGui/Textures/container2.png", 200, 200, "Wooden Box"))
+			if (SpxGui::ImageBox("../SpxGui/Textures/container2.png", 100, 100, "Wooden Box"))
 				std::cout << "Image Box clicked\n";
 
 			
 
-			/*float col[3] = { 0.8f, 0.2f, 0.3f };
-			if (SpxGui::ColorEdit3("Clear Color", col ))
-				std::cout << "Color changed: " << col[0] << ", " << col[1] << ", " << col[2] << std::endl;
-				*/		
+			float col[3] = { 0.8f, 0.2f, 0.3f };
+			if (SpxGui::ColorEdit3("Clear Color", col)) {
+				showColWin1 = true;
+			}
+
+			//char buf[32] = "0.0";  // make a writable buffer
+			//SpxGui::InputFloat(1, 0.2f, buf, sizeof(buf), 100, 30);
+			//float pos[3] = { 1.0f, 2.0f, 3.0f };
+			//SpxGui::Drag3Float(pos, 60, 20);
+			
+			
 			SpxGui::End();
 		}
 
+		if (showColWin1) {  // will draw rect
+			SpxGui::BeginPopUp("Color Editor", &showColWin1, 3); 
+			//std::cout << "Color changed: " << col[0] << ", " << col[1] << ", " << col[2] << std::endl;
+			SpxGui::EndPopUp();
+		}
 		GLwinSwapBuffers(window);
 
 		GLenum err = glGetError();

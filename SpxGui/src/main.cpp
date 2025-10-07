@@ -9,6 +9,12 @@
 #include "../SpxGui.h"
 #include "../SpxGuiWidgets.h"
 
+void MyCharCallback(unsigned int codepoint) {
+	// Print the Unicode codepoint as a character (if printable)
+	SpxGui::AddInputChar(codepoint);
+	printf("Char input: U+%04X '%lc'\n", codepoint, (wchar_t)codepoint);
+}
+
 
 int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
@@ -26,7 +32,11 @@ int main() {
 	int fbw, fbh;
 	GLwinGetFramebufferSize(window, &fbw, &fbh);
 	std::cout << "Framebuffer size: " << fbw << " x " << fbh << std::endl;
+	
+	// Set character input callback
+	GLwinSetCharCallback(window, MyCharCallback);
 
+	// Load OpenGL functions using GLAD
 	if (!gladLoadGLLoader((GLADloadproc)GLwinGetProcAddress)) {
 		std::cerr << "Failed to initialize GLAD!" << std::endl;
 		//GLwin_DestroyWindow(window);
@@ -64,17 +74,13 @@ int main() {
 		bool released = (!down && prevDown);
 		prevDown = down;
 
-		SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);
+		//SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);
 
 		if (GLwinGetKey(window, GLWIN_ESCAPE) == GLWIN_PRESS) { // ESC key
 			std::wcout << L"Escape key pressed window is closing!" << std::endl;
 			break; // ESC key
 		}
-		if (GLwinGetKey(window, GLWIN_SPACE) == GLWIN_PRESS) { // ESC key
-			
-			showWin2 = true;
-		}
-
+		
 		glClearColor(0.17f, 0.17f, 0.18f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		
@@ -85,18 +91,19 @@ int main() {
 			if (SpxGui::Button("Add Light", 100, 30)) {
 				std::cout << "Add Light clicked\n";
 			}
-			// testing Style changes
-			if (SpxGui::Button("Add Light_01", 100, 30)) {
-				std::cout << "Add Light clicked_01\n";
-			}
-			if (SpxGui::Button("Add Light_02", 100, 30)) {
-				std::cout << "Add Light clicked_02\n";
-			}
-			if (SpxGui::InputText("Light Name", (char*)"This is a Text box", 32, 200, 30)) {
+			
 
-			}
-			if (SpxGui::Button("Add Light_03", 100, 30)) {
-				std::cout << "Add Light clicked_03\n";
+			// testing Style changes
+			static char buf[32] = "Testting";  // make a writable buffer
+			static char buf2[32] = "Test";  // make a writable buffer
+			SpxGui::InputText("Text Name", (char*)buf, sizeof(buf), 200, 30);
+						
+			SpxGui::InputText("Text Name_01", (char*)buf2, sizeof(buf2), 200, 30);
+					
+
+			if (SpxGui::Button("Add New Window", 100, 30)) {
+				std::cout << "New Window\n";
+				showWin2 = true;
 			}
 			SpxGui::SeparatorText("Light Properties", 200);
 			SpxGui::ColoredLalel(1.0f, 1.0f, 0.0f, "Color Lable_1:");
@@ -144,12 +151,6 @@ int main() {
 				showColWin1 = true;
 			}
 
-			//char buf[32] = "0.0";  // make a writable buffer
-			//SpxGui::InputFloat(1, 0.2f, buf, sizeof(buf), 100, 30);
-			//float pos[3] = { 1.0f, 2.0f, 3.0f };
-			//SpxGui::Drag3Float(pos, 60, 20);
-			
-			
 			SpxGui::End();
 		}
 
@@ -158,6 +159,9 @@ int main() {
 			//std::cout << "Color changed: " << col[0] << ", " << col[1] << ", " << col[2] << std::endl;
 			SpxGui::EndPopUp();
 		}
+		// needs to be after all widgets are drawn in main as it clears the text buffer
+		SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);
+
 		GLwinSwapBuffers(window);
 
 		GLenum err = glGetError();

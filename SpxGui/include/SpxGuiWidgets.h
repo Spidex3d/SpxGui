@@ -35,7 +35,8 @@ namespace SpxGui
         return clicked;
     }
 	// ----------------------------------------------- Input Text Section ---------------------------------------
-
+	// temp
+	
 
 
 	//inline bool InputText(const char* label, char* buf, size_t buf_size, float offsetX, float offsetY, float w, float h) {
@@ -52,11 +53,37 @@ namespace SpxGui
 		float r = 0.3f, gcol = 0.3f, b = 0.3f;
 		if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
 		if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
+		// ----------------------------------------------- New Code Section for text input ---------------------------------------
+		
+		if (clicked) {
+			gCurrent->activeTextID = (int)(reinterpret_cast<uintptr_t>(buf));
+		}
 
 		DrawRect(x, y, w, h, r, gcol, b);
 		DrawText(x + 6, y + 4, buf, 1, 1, 1);
-		// For simplicity, we won't handle actual text input here.
-		// In a real implementation, you'd capture keyboard input to modify 'buf'.
+
+		// We handle actual text input here.
+		if (gCurrent->activeTextID == (int)(reinterpret_cast<uintptr_t>(buf))) {
+			for (char c : gInputChars) {
+				if (c == 8) { // backspace
+					size_t len = strlen(buf);
+					if (len > 0) buf[len - 1] = '\0';
+				}
+				else if (c >= 32 && c < 127) { // printable
+					size_t len = strlen(buf);
+					if (len + 1 < buf_size) {
+						buf[len] = c;
+						buf[len + 1] = '\0';
+					}
+				}
+			}
+
+			// cursor position using real text width
+			float textWidth = CalcTextWidth(buf);
+			float caretX = x + 6 + textWidth;
+			DrawRect(caretX, y + 6, 2, g.fontSize, 1, 1, 1); 
+
+		}
 
 		gCurrent->cursorY += h + gStyle.ItemSpacingY; // move cursor down for next item
 

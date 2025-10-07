@@ -62,6 +62,9 @@ inline void DrawRect(float x, float y, float w, float h, float r, float g, float
 inline void DrawText(float x, float y, const char* txt, float r, float gcol, float b);
 inline void Init(int screenW, int screenH);
   
+inline std::string gInputChars;
+
+
 	// Struct for storing style settings
     struct Style {
         float WindowRounding = 0.0f;
@@ -114,9 +117,12 @@ inline void Init(int screenW, int screenH);
         bool mouseDown = false;
         bool mousePressed = false;
         bool mouseReleased = false;
+		// textbox state 
+        int activeTextID = 0;
+        int caretIndex = 0;   // cursor position in the active text buffer
         
     };
-    // global-only things into a single Context
+    // global-only things into a single ContextAddInputChar
     struct Context {
         int screenW = 800;
         int screenH = 600;
@@ -144,6 +150,19 @@ inline void Init(int screenW, int screenH);
         int ColIndex = 0; // later for multiple colors in one texture
         GLenum i_format; // later for different image formats
     };
+
+	// ------------------------------------------------- Text Input  test ----------------------------------------------
+    inline void AddInputChar(unsigned int c) {
+        if (c >= 32 && c < 127) { // only printable ASCII for now
+            gInputChars.push_back((char)c);
+        }
+        if (c == 8) { // backspace
+            gInputChars.push_back((char)c);
+        }
+    }
+   
+
+
 
 	// ----------------------------------------------------------- Test Area -----------------------------------------------------------
 
@@ -198,6 +217,16 @@ inline void Init(int screenW, int screenH);
 
    // inline Context g;
     inline Context g;
+
+    float CalcTextWidth(const char* text) {
+        float xpos = 0, ypos = 0;
+        for (const char* p = text; *p; p++) {
+            if (*p < 32 || *p >= 128) continue;
+            stbtt_aligned_quad q;
+            stbtt_GetBakedQuad(g.cdata, 512, 512, *p - 32, &xpos, &ypos, &q, 1);
+        }
+        return xpos;
+    }
 
     inline bool LoadDefaultFont(const char* path, float size) {
         FILE* f = nullptr;
@@ -399,6 +428,7 @@ inline void Init(int screenW, int screenH);
 
     } 
 
+	// needs to be after all widgets are drawn in main
     inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
        
         for (auto& w : gWindows) { 
@@ -408,7 +438,7 @@ inline void Init(int screenW, int screenH);
             w.mousePressed = pressed;
             w.mouseReleased = released;
         }
-        
+		gInputChars.clear(); // clear input chars each frame
     }
 	Style gStyle; // global style instance
 	// Drawing functions default window 

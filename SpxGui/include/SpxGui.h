@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <string>
 #include "../vendors/GLwin/include/GLwin.h"
+#include "../vendors/GLwin/include/GLwinDefs.h"
 #include "stb/stb_image.h" // Include stb_image.h for image loading
 #include "stb\stb_truetype.h" // Include stb_truetype.h for font rendering
 #include <unordered_map>
@@ -14,6 +15,7 @@
 // And lets not for get YouTub The Cherno for C++ & openGL channel https://www.youtube.com/@TheCherno
 // Error to fix if you resize the main window befor you move the gui window you cant move it anymore
 
+// I think we need to move this in to it's own Shader file
 const char* vertexSrc = R"(
 #version 330 core
 layout(location = 0) in vec2 aPos;
@@ -62,7 +64,11 @@ inline void DrawRect(float x, float y, float w, float h, float r, float g, float
 inline void DrawText(float x, float y, const char* txt, float r, float gcol, float b);
 inline void Init(int screenW, int screenH);
   
+// Text Input related globals
 inline std::string gInputChars;
+inline uintptr_t activeTextID = 0; // ID of the active text box focus
+inline int caretIndex = 0;   // caretIndex cursor position in the active text buffer (caret = carage return)
+inline char* activeBuf = nullptr; // later for multiple text boxes
 
 
 	// Struct for storing style settings
@@ -117,10 +123,7 @@ inline std::string gInputChars;
         bool mouseDown = false;
         bool mousePressed = false;
         bool mouseReleased = false;
-		// textbox state 
-        int activeTextID = 0;
-        int caretIndex = 0;   // cursor position in the active text buffer
-        
+		
     };
     // global-only things into a single ContextAddInputChar
     struct Context {
@@ -151,13 +154,48 @@ inline std::string gInputChars;
         GLenum i_format; // later for different image formats
     };
 
-	// ------------------------------------------------- Text Input  test ----------------------------------------------
+	// ------------------------------------------------- Text Input  ----------------------------------------------
+   
+
     inline void AddInputChar(unsigned int c) {
+
         if (c >= 32 && c < 127) { // only printable ASCII for now
             gInputChars.push_back((char)c);
         }
         if (c == 8) { // backspace
             gInputChars.push_back((char)c);
+        }
+    }
+
+    inline void AddKeyPress(int key) {
+        if (!activeBuf) return; // no active input
+
+        switch (key) {
+        case GLWIN_LEFT:
+            if (SpxGui::caretIndex > 0) caretIndex--;
+            break;
+        case GLWIN_RIGHT: {
+            int len = (int)strlen(activeBuf);
+            if (caretIndex < len) caretIndex++;
+            break;
+        }
+        case GLWIN_HOME:
+            caretIndex = 0;
+            break;
+        case GLWIN_END:
+            caretIndex = (int)strlen(activeBuf);
+            break;
+        }
+    }
+
+    // Default callbacks for GLwin integration
+    inline void CharCallback(unsigned int codepoint) {
+        SpxGui::AddInputChar(codepoint);
+    }
+
+    inline void KeyCallback(int key, int action) {
+        if (action == GLWIN_PRESS) {
+            SpxGui::AddKeyPress(key);
         }
     }
    
@@ -189,12 +227,10 @@ inline std::string gInputChars;
 	// Use this for RGBA colors and XYWH coordinates
 	struct SpxVec4 {
 	};
-
-    
+        
 	
 	// ----------------------------------------------------------- End Test Area -----------------------------------------------------------
-
-	
+    	
    
 	// Global variables for SpxGui Shader
     inline GLuint gShader = 0;
@@ -214,16 +250,16 @@ inline std::string gInputChars;
         }
         return s;
     }
-
+	// ----------------------------------------------------- Font & Text Rendering -----------------------------------------------------
    // inline Context g;
     inline Context g;
-
-    float CalcTextWidth(const char* text) {
+    float CalcTextWidthN(const char* text, int count) {
         float xpos = 0, ypos = 0;
-        for (const char* p = text; *p; p++) {
-            if (*p < 32 || *p >= 128) continue;
+        for (int i = 0; i < count && text[i]; i++) {
+            unsigned char c = text[i];
+            if (c < 32 || c >= 128) continue;
             stbtt_aligned_quad q;
-            stbtt_GetBakedQuad(g.cdata, 512, 512, *p - 32, &xpos, &ypos, &q, 1);
+            stbtt_GetBakedQuad(g.cdata, 512, 512, c - 32, &xpos, &ypos, &q, 1);
         }
         return xpos;
     }
@@ -310,6 +346,7 @@ inline std::string gInputChars;
         // --- Load default font ---
         LoadDefaultFont("C:/Windows/Fonts/arial.ttf", 16.0f);
 
+        
         // tell shader which texture unit the font atlas is bound to
         glUseProgram(gShader);
         glUniform1i(glGetUniformLocation(gShader, "uTex"), 0);
@@ -331,7 +368,6 @@ inline std::string gInputChars;
 			return img.textureID; // return existing texture ID
 		}
 
-
 		glGenTextures(1, &img.textureID); // Generate a texture ID
         // sets pixel storage modes that affect the operation of subsequent
         // glReadPixels as well as the unpacking of texture patterns
@@ -344,15 +380,14 @@ inline std::string gInputChars;
 				<< " (" << img.width << " x " << img.height
 				<< ", channels= " << img.ColIndex << ")");
         
-			if (img.ColIndex == 4) // RGBA png
-				img.i_format = GL_RGBA;
-			else if (img.ColIndex == 3) // JPG RGB
-				img.i_format = GL_RGB;
-			else if (img.ColIndex == 1) // greyscale
-				img.i_format = GL_RED;
-			else
-				std::cerr << "Failed to load image (Unknown format): " << filePath << std::endl;
-            
+            if (img.ColIndex == 4) // RGBA png
+                img.i_format = GL_RGBA;
+            else if (img.ColIndex == 3) // JPG RGB
+                img.i_format = GL_RGB;
+            else if (img.ColIndex == 1) // greyscale
+                img.i_format = GL_RED;
+            else
+                std::cerr << "Failed to load image (Unknown format): " << filePath << std::endl;
 
 			glBindTexture(GL_TEXTURE_2D, img.textureID);
 			glTexImage2D(GL_TEXTURE_2D, 0, img.i_format, img.width, img.height, 0, img.i_format, GL_UNSIGNED_BYTE, data);
@@ -691,6 +726,7 @@ inline std::string gInputChars;
         glUniform1i(glGetUniformLocation(gShader, "useTex"), 0); // reset
     }
 
+    
 
     inline void Render() {
         // later: upload draw data to GPU

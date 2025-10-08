@@ -56,32 +56,62 @@ namespace SpxGui
 		// ----------------------------------------------- New Code Section for text input ---------------------------------------
 		
 		if (clicked) {
-			gCurrent->activeTextID = (int)(reinterpret_cast<uintptr_t>(buf));
+			SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
+			SpxGui::activeBuf = buf; // store pointer to active buffer
+			SpxGui::caretIndex = strlen(buf); // move cursor to end of text
+
 		}
 
 		DrawRect(x, y, w, h, r, gcol, b);
 		DrawText(x + 6, y + 4, buf, 1, 1, 1);
 
 		// We handle actual text input here.
-		if (gCurrent->activeTextID == (int)(reinterpret_cast<uintptr_t>(buf))) {
+		if (SpxGui::activeTextID == (reinterpret_cast<uintptr_t>(buf))) {
 			for (char c : gInputChars) {
 				if (c == 8) { // backspace
 					size_t len = strlen(buf);
-					if (len > 0) buf[len - 1] = '\0';
+					if (SpxGui::caretIndex > 0 && len > 0) {
+						memmove(buf + SpxGui::caretIndex - 1,
+							buf +SpxGui::caretIndex,
+							len -SpxGui::caretIndex + 1);
+						SpxGui::caretIndex--;
+					}
 				}
 				else if (c >= 32 && c < 127) { // printable
 					size_t len = strlen(buf);
 					if (len + 1 < buf_size) {
-						buf[len] = c;
-						buf[len + 1] = '\0';
+						memmove(buf + SpxGui::caretIndex + 1,
+							buf + SpxGui::caretIndex,
+							len - SpxGui::caretIndex + 1);
+						buf[SpxGui::caretIndex] = c;
+						SpxGui::caretIndex++;
 					}
 				}
 			}
+			//for (char c : gInputChars) {
+			//	if (c == 8) { // backspace
+			//		size_t len = strlen(buf);
+			//		if (len > 0) buf[len - 1] = '\0';
+			//	}
+			//	else if (c >= 32 && c < 127) { // printable
+			//		size_t len = strlen(buf);
+			//		if (len + 1 < buf_size) {
+			//			buf[len] = c;
+			//			buf[len + 1] = '\0';
+			//		}
+			//	}
+			//}
 
 			// cursor position using real text width
-			float textWidth = CalcTextWidth(buf);
+			if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(buf)) {
+				float caretX = x + 6 + CalcTextWidthN(buf, SpxGui::caretIndex);
+				DrawRect(caretX, y + 6, 2, g.fontSize, 1, 1, 1);
+			}
+
+
+			/*float textWidth = CalcTextWidthN(buf);
 			float caretX = x + 6 + textWidth;
-			DrawRect(caretX, y + 6, 2, g.fontSize, 1, 1, 1); 
+			DrawRect(caretX, y + 6, 2, g.fontSize, 1, 1, 1); */
 
 		}
 

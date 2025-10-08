@@ -9,12 +9,6 @@
 #include "../SpxGui.h"
 #include "../SpxGuiWidgets.h"
 
-void MyCharCallback(unsigned int codepoint) {
-	// Print the Unicode codepoint as a character (if printable)
-	SpxGui::AddInputChar(codepoint);
-	printf("Char input: U+%04X '%lc'\n", codepoint, (wchar_t)codepoint);
-}
-
 
 int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
@@ -33,9 +27,11 @@ int main() {
 	GLwinGetFramebufferSize(window, &fbw, &fbh);
 	std::cout << "Framebuffer size: " << fbw << " x " << fbh << std::endl;
 	
-	// Set character input callback
-	GLwinSetCharCallback(window, MyCharCallback);
+	// Set character input callback and key callback for SpxGui
+	GLwinSetCharCallback(window, SpxGui::CharCallback);
+	GLwinSetKeyCallback(window, SpxGui::KeyCallback);
 
+	
 	// Load OpenGL functions using GLAD
 	if (!gladLoadGLLoader((GLADloadproc)GLwinGetProcAddress)) {
 		std::cerr << "Failed to initialize GLAD!" << std::endl;
@@ -81,6 +77,7 @@ int main() {
 			break; // ESC key
 		}
 		
+		
 		glClearColor(0.17f, 0.17f, 0.18f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		
@@ -101,7 +98,7 @@ int main() {
 			SpxGui::InputText("Text Name_01", (char*)buf2, sizeof(buf2), 200, 30);
 					
 
-			if (SpxGui::Button("Add New Window", 100, 30)) {
+			if (SpxGui::Button("Open New Window", 200, 30)) {
 				std::cout << "New Window\n";
 				showWin2 = true;
 			}

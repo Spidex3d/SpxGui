@@ -4,43 +4,7 @@
 
 namespace SpxGui
 {
-	
-    inline bool Button(const char* label, float w, float h) {
-        if (!gCurrent) return false;
-
-		static int callCount = 0;
-		callCount++;
-		
-		float x = gCurrent->cursorX;
-		float y = gCurrent->cursorY;
-
-        bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
-            gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
-
-        bool clicked = (hover && gCurrent->mousePressed);
-		// Color change on hover and click
-        float r = 0.3f, gcol = 0.3f, b = 0.3f;
-        if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
-        if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }	
-
-        DrawRect(x, y, w, h, r, gcol, b);
-        DrawText(x + 6, y + 4, label, 1, 1, 1);
-
-		gCurrent->cursorY += h + gStyle.ItemSpacingY; // move cursor down for next item	
-
-		// Record last item size
-		gCurrent->lastItemW = w;
-		gCurrent->lastItemH = h;
-
-        return clicked;
-    }
-	// ----------------------------------------------- Input Text Section ---------------------------------------
-	// temp
-	
-
-
-	//inline bool InputText(const char* label, char* buf, size_t buf_size, float offsetX, float offsetY, float w, float h) {
-	inline bool InputText(const char* label, char* buf, size_t buf_size, float w, float h) {
+	inline bool ButtonNew(const char* label, float w, float h) {
 		if (!gCurrent) return false;
 
 		float x = gCurrent->cursorX;
@@ -49,79 +13,137 @@ namespace SpxGui
 		bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
 			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
 		bool clicked = (hover && gCurrent->mousePressed);
-		// Color change on hover and click
+
 		float r = 0.3f, gcol = 0.3f, b = 0.3f;
 		if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
 		if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
-		// ----------------------------------------------- New Code Section for text input ---------------------------------------
-		
-		if (clicked) {
-			SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
-			SpxGui::activeBuf = buf; // store pointer to active buffer
-			SpxGui::caretIndex = strlen(buf); // move cursor to end of text
 
-		}
+		// background rect
+		gCurrent->drawList.push_back({ DrawCmd::RECT, x, y, w, h, r, gcol, b });
 
-		DrawRect(x, y, w, h, r, gcol, b);
-		DrawText(x + 6, y + 4, buf, 1, 1, 1);
+		// text
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x + 6, y + 4, 1, 1, 1, label));
 
-		// We handle actual text input here.
-		if (SpxGui::activeTextID == (reinterpret_cast<uintptr_t>(buf))) {
-			for (char c : gInputChars) {
-				if (c == 8) { // backspace
-					size_t len = strlen(buf);
-					if (SpxGui::caretIndex > 0 && len > 0) {
-						memmove(buf + SpxGui::caretIndex - 1,
-							buf +SpxGui::caretIndex,
-							len -SpxGui::caretIndex + 1);
-						SpxGui::caretIndex--;
-					}
-				}
-				else if (c >= 32 && c < 127) { // printable
-					size_t len = strlen(buf);
-					if (len + 1 < buf_size) {
-						memmove(buf + SpxGui::caretIndex + 1,
-							buf + SpxGui::caretIndex,
-							len - SpxGui::caretIndex + 1);
-						buf[SpxGui::caretIndex] = c;
-						SpxGui::caretIndex++;
-					}
-				}
-			}
-			//for (char c : gInputChars) {
-			//	if (c == 8) { // backspace
-			//		size_t len = strlen(buf);
-			//		if (len > 0) buf[len - 1] = '\0';
-			//	}
-			//	else if (c >= 32 && c < 127) { // printable
-			//		size_t len = strlen(buf);
-			//		if (len + 1 < buf_size) {
-			//			buf[len] = c;
-			//			buf[len + 1] = '\0';
-			//		}
-			//	}
-			//}
-
-			// cursor position using real text width
-			if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(buf)) {
-				float caretX = x + 6 + CalcTextWidthN(buf, SpxGui::caretIndex);
-				DrawRect(caretX, y + 6, 2, g.fontSize, 1, 1, 1);
-			}
-
-
-			/*float textWidth = CalcTextWidthN(buf);
-			float caretX = x + 6 + textWidth;
-			DrawRect(caretX, y + 6, 2, g.fontSize, 1, 1, 1); */
-
-		}
-
-		gCurrent->cursorY += h + gStyle.ItemSpacingY; // move cursor down for next item
-
+		gCurrent->cursorY += h + gStyle.ItemSpacingY;
 		gCurrent->lastItemW = w;
 		gCurrent->lastItemH = h;
 
 		return clicked;
 	}
+	
+   
+		inline bool Button(const char* label, float w, float h) {
+			if (!gCurrent) return false;
+
+			float x = gCurrent->cursorX;
+			float y = gCurrent->cursorY;
+
+			bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+				gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+			bool clicked = (hover && gCurrent->mousePressed);
+
+			float r = 0.3f, gcol = 0.3f, b = 0.3f;
+			if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
+			if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
+
+			// Push button rect
+			gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, r, gcol, b);
+
+			// Push button label
+			gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 6, y + 4, 1, 1, 1, label);
+
+			// Background
+			//gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x, y, w, h, r, gcol, b));
+
+			// Label text (center vertically)
+			//gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT,	x + 6, y + (h - g.fontSize) * 0.5f,	1, 1, 1, label));
+
+			gCurrent->cursorY += h + gStyle.ItemSpacingY;
+			gCurrent->lastItemW = w;
+			gCurrent->lastItemH = h;
+
+			return clicked;
+		}
+
+    
+	// ----------------------------------------------- Input Text Section ---------------------------------------
+	// temp
+	
+// #define float SPX_COLOR = 0.0f, 1.0f, 0.0f;
+	//Add Colors for the text in the text box
+	/*const ImVec4 COLOR_LIGHTBLUE(0.43f, 0.7f, 0.89f, 1.0f);
+	const ImVec4 COLOR_LIGHTGREEN(0.0f, 0.9f, 0.0f, 1.0f);
+	const ImVec4 COLOR_NONE(0.0f, 0.0f, 0.0f, 0.0f);*/
+
+
+		inline bool InputText(const char* label, char* buf, size_t buf_size, float w, float h) {
+			if (!gCurrent) return false;
+
+			float x = gCurrent->cursorX;
+			float y = gCurrent->cursorY;
+
+			bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+				gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+			bool clicked = (hover && gCurrent->mousePressed);
+
+			// Highlight colors
+			float r = 0.3f, gcol = 0.3f, b = 0.3f;
+			if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
+			if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
+
+			// Record rect
+			//gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x, y, w, h, r, gcol, b));
+
+			// Handle focus
+			if (clicked) {
+				SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
+				SpxGui::activeBuf = buf;
+				SpxGui::caretIndex = strlen(buf);
+			}
+
+			// Record background rect
+			gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, r, gcol, b);
+
+			// Record text content
+			gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 6, y + 4, 1, 1, 1, buf);
+
+			// Handle typed characters if this text box is active
+			if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(buf)) {
+				for (char c : gInputChars) {
+					if (c == 8) { // backspace
+						size_t len = strlen(buf);
+						if (SpxGui::caretIndex > 0 && len > 0) {
+							memmove(buf + SpxGui::caretIndex - 1,
+								buf + SpxGui::caretIndex,
+								len - SpxGui::caretIndex + 1);
+							SpxGui::caretIndex--;
+						}
+					}
+					else if (c >= 32 && c < 127) { // printable
+						size_t len = strlen(buf);
+						if (len + 1 < buf_size) {
+							memmove(buf + SpxGui::caretIndex + 1,
+								buf + SpxGui::caretIndex,
+								len - SpxGui::caretIndex + 1);
+							buf[SpxGui::caretIndex] = c;
+							SpxGui::caretIndex++;
+						}
+					}
+				}
+
+				// Caret
+				float caretX = x + 6 + CalcTextWidthN(buf, SpxGui::caretIndex);
+				gCurrent->drawList.emplace_back(DrawCmd(DrawCmd::CARET, caretX, y + 6, 2, g.fontSize, 1, 1, 1));
+			}
+
+			
+			gCurrent->cursorY += h + gStyle.ItemSpacingY;
+			gCurrent->lastItemW = w;
+			gCurrent->lastItemH = h;
+
+			return clicked;
+		}
+
 
 	inline void MultiLineText(int inputIdx, float input, char* inputBuf, size_t bufSize, float w, float h) {
 		if (!gCurrent) return;
@@ -174,11 +196,12 @@ namespace SpxGui
 			float cr = (i == 0) ? 0.4f : 0.2f;
 			float cg = (i == 1) ? 0.4f : 0.2f;
 			float cb = (i == 2) ? 0.4f : 0.2f;
-			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+			// push rect to draw list
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, boxX, curY, wBox, hBox, cr, cg, cb));
 
 			// vertically center text in the box
 			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
-			DrawText(boxX + 4, textY - 16, buf, 1, 1, 1);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, boxX + 4, textY - 16, 1.0f, 1.0f, 1.0f, buf));
 		}
 
 		gCurrent->cursorY += hBox + gStyle.ItemSpacingY;
@@ -205,12 +228,15 @@ namespace SpxGui
 			float cr = (i == 0) ? 0.3f : 0.2f;
 			float cg = (i == 1) ? 0.3f : 0.2f;
 			float cb = (i == 2) ? 0.3f : 0.2f;
+			// push rect to draw list
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, boxX, curY, wBox, hBox, cr, cg, cb));
 
-			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+			
 
 			// center text vertically inside the box
 			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
-			DrawText(boxX + 4, textY - 16, buf, 1, 1, 1);
+			// push text to draw list
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, boxX + 4, textY - 16, 1.0f, 1.0f, 1.0f, buf));
 		}
 
 		// advance layout cursor
@@ -243,11 +269,13 @@ namespace SpxGui
 			if (i == 3) { cr = 0.25f; cg = 0.25f; cb = 0.25f; } // neutral for A
 
 			// draw background
-			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+			//DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, boxX, curY, wBox, hBox, cr, cg, cb));
 
 			// center text vertically inside the box
 			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
-			DrawText(boxX + 4, textY -16, buf, 1, 1, 1);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, boxX + 4, textY - 16, 1.0f, 1.0f, 1.0f, buf));
+			//DrawText(boxX + 4, textY -16, buf, 1, 1, 1);
 		}
 
 		// advance layout cursor
@@ -275,10 +303,11 @@ namespace SpxGui
 			float cb = (i == 2) ? 0.4f : 0.2f;
 			if (i == 3) { cr = 0.3f; cg = 0.3f; cb = 0.3f; }
 
-			DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
-						
+			//DrawRect(boxX, curY, wBox, hBox, cr, cg, cb);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, boxX, curY, wBox, hBox, cr, cg, cb));
 			float textY = curY + (hBox - g.fontSize) * 0.5f + g.fontSize * 0.75f;
-			DrawText(boxX + 6, textY - 16, buf, 1, 1, 1);
+			//DrawText(boxX + 6, textY - 16, buf, 1, 1, 1);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, boxX + 4, textY - 16, 1.0f, 1.0f, 1.0f, buf));
 			
 		}
 
@@ -295,12 +324,17 @@ namespace SpxGui
 	// --------------------------------------- Label Section ---------------------------------------
 
 	// simple text output like a label
-	inline bool ColoredLalel(float r, float gcol, float b, const char* txt) {
+	inline bool ColoredLabel(float r, float gcol, float b, const char* txt) {
 		if (!gCurrent) return false;
 		
 		float x = gCurrent->cursorX;
 		float y = gCurrent->cursorY;
-		DrawText(x, y, txt, r, gcol, b);
+
+		// record into drawList instead of drawing immediately
+		gCurrent->drawList.push_back(
+			DrawCmd(DrawCmd::TEXT, x, y, r, gcol, b, txt)
+		);
+		
 
 		gCurrent->cursorY += g.fontSize + gStyle.ItemSpacingY; // move cursor down for next item
 
@@ -317,7 +351,8 @@ namespace SpxGui
 		float x = gCurrent->cursorX;
 		float y = gCurrent->cursorY;
 
-		DrawRect(x, y, w, 1, 0.5f, 0.5f, 0.5f); // horizontal line
+		//DrawRect(x, y, w, 1, 0.5f, 0.5f, 0.5f); // horizontal line
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x, y, w, 1, 0.5f, 0.5f, 0.5f));
 
 		gCurrent->cursorY += 1 + gStyle.ItemSpacingY; // move cursor down for next item
 
@@ -353,16 +388,20 @@ namespace SpxGui
 
 		// left line
 		if (textX - x > 8) {
-			DrawRect(x, lineY, textX - x - 8, 1, 0.5f, 0.5f, 0.5f);
+			//DrawRect(x, lineY, textX - x - 8, 1, 0.5f, 0.5f, 0.5f);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x, lineY, textX - x - 8, 1, 0.5f, 0.5f, 0.5f));
 		}
 
 		// text
-		DrawText(textX, textY, label, 1, 1, 1);
+		//DrawText(textX, textY, label, 1, 1, 1);
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, textX, textY, 1, 1, 1, label));
 
 		// right line
 		float rightStart = textX + textWidth + 8;
 		if (rightStart < x + w) {
-			DrawRect(rightStart, lineY, (x + w) - rightStart, 1, 0.5f, 0.5f, 0.5f);
+			//DrawRect(rightStart, lineY, (x + w) - rightStart, 1, 0.5f, 0.5f, 0.5f);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, rightStart, lineY, (x + w) - rightStart, 1, 0.5f, 0.5f, 0.5f));
+
 		}
 
 		// advance cursor
@@ -400,18 +439,22 @@ namespace SpxGui
 			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
 		bool clicked = (hover && gCurrent->mousePressed);
 
-		// draw color box
-		DrawRect(x, y, w, h, *r, *g, *b);
+		// --- record color box ---
+		gCurrent->drawList.push_back(
+			DrawCmd(DrawCmd::RECT, x, y, w, h, *r, *g, *b)
+		);
 
-		// optional border
-		DrawRect(x - 1, y - 1, w + 2, 1, 0, 0, 0);         // top
-		DrawRect(x - 1, y + h, w + 2, 1, 0, 0, 0);         // bottom
-		DrawRect(x - 1, y - 1, 1, h + 2, 0, 0, 0);         // left
-		DrawRect(x + w, y - 1, 1, h + 2, 0, 0, 0);         // right
+		// --- record border ---
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, w + 2, 1, 0, 0, 0)); // top
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y + h, w + 2, 1, 0, 0, 0)); // bottom
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, 1, h + 2, 0, 0, 0)); // left
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x + w, y - 1, 1, h + 2, 0, 0, 0)); // right
 
-		// optional text label
+		// --- optional label ---
 		if (label) {
-			DrawText(x + w + 6, y, label, 1, 1, 1);
+			gCurrent->drawList.push_back(
+				DrawCmd(DrawCmd::TEXT, x + w + 6, y, 1, 1, 1, label)
+			);
 		}
 
 		// advance cursor
@@ -422,14 +465,14 @@ namespace SpxGui
 
 		return clicked;
 	}
-	// Error All of the button click hover pos is up the creak 
-
+	// ColorEdit3 - RGB color editor with color box and basic interaction
 	inline bool ColorEdit3(const char* label, float col[3]) {
 		if (!gCurrent) return false;
 		float x = gCurrent->cursorX;
 		float y = gCurrent->cursorY;
 		// Draw label
-		DrawText(x, y, label, 1, 1, 1);
+		
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, y, 1, 1, 1, label));
 		// We need a drag3Float for RGB and a drag4Float for RGBA here
 		// we will also need a popup color picker window
 		// we will also need a vertical slider for HSV and Alpha
@@ -439,7 +482,10 @@ namespace SpxGui
 		float boxSize = g.fontSize; // square box
 		float boxX = x + 100; // fixed offset for simplicity
 		float boxY = y;
-		DrawRect(boxX, boxY, boxSize, boxSize, col[0], col[1], col[2]);
+		// Draw color box
+		gCurrent->drawList.push_back(
+			DrawCmd(DrawCmd::RECT, boxX, boxY, boxSize, boxSize, col[0], col[1], col[2]));
+
 		bool hover = (gCurrent->mouseX >= boxX && gCurrent->mouseX <= boxX + boxSize &&
 			gCurrent->mouseY >= boxY && gCurrent->mouseY <= boxY + boxSize);
 		bool clicked = (hover && gCurrent->mousePressed);
@@ -493,12 +539,14 @@ namespace SpxGui
 			float r = hover ? 0.8f : 0.6f;
 			float gcol = hover ? 0.8f : 0.6f;
 			float b = hover ? 0.8f : 0.6f;
-			DrawRect(x - 2, y - 2, w + 4, h + 4, r, gcol, b);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 2, y - 2, w + 4, h + 4, r, gcol, b));
+			//DrawRect(x - 2, y - 2, w + 4, h + 4, r, gcol, b);
 		}
 
 		// Draw the image itself
 		if (texID != 0) {
-			DrawImage(texID, x, y, w, h);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::IMAGE, texID, x, y, w, h));
+			//DrawImage(texID, x, y, w, h);
 		}
 
 		// Advance cursor
@@ -527,17 +575,23 @@ namespace SpxGui
 		float r = 0.3f, gcol = 0.3f, b = 0.3f;
 		if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
 		if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
-		DrawRect(x - 2, y - 2, w + 4, h + 4, r, gcol, b);
+		//DrawRect(x - 2, y - 2, w + 4, h + 4, r, gcol, b);
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 2, y - 2, w + 4, h + 4, r, gcol, b));
+
 				
 		// Image
 		if (img.textureID != 0) {
-			DrawImage(img.textureID, x, y, w, h);
+			//DrawImage(img.textureID, x, y, w, h);
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::IMAGE, texID, x, y, w, h));
+
 		}
 
 		// Caption text (optional)
 		if (label) {
 			float textY = y + h + 4; // 4px gap under image
-			DrawText(x, textY, label, 1, 1, 1);
+			//DrawText(x, textY, label, 1, 1, 1);
+			
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, textY, 1, 1, 1, label));
 			gCurrent->cursorY = textY + g.fontSize + gStyle.ItemSpacingY;
 			gCurrent->lastItemH = h +g.fontSize + 4; // total height including text
 		}

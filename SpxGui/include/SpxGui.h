@@ -15,6 +15,8 @@
 // And lets not for get YouTub The Cherno for C++ & openGL channel https://www.youtube.com/@TheCherno
 // Error to fix if you resize the main window befor you move the gui window you cant move it anymore
 
+// moveing to Retained Mode so we can have multiple windows and widgets with state - focus
+
 // I think we need to move this in to it's own Shader file
 const char* vertexSrc = R"(
 #version 330 core
@@ -89,17 +91,53 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         float ItemSpacingX = 8.0f;
         float ItemSpacingY = 6.0f;
         float WindowPaddingX = 10.0f;
-        float WindowPaddingY = 28.0f; // leave room for header
-
-        
+        float WindowPaddingY = 28.0f; // leave room for header       
 		
     };
+	// struct for storing draw commands as we move to Retained Mode
+    struct DrawCmd {
+        enum Type { RECT, TEXT, IMAGE, CARET } type;
+        float x, y, w, h;
+        float r, g, b;
+        unsigned int texID = 0;   // for IMAGE
+        std::string text;         // for TEXT
+
+        // Rect (generic solid rectangle)
+        DrawCmd(Type t, float _x, float _y, float _w, float _h,
+            float _r, float _g, float _b)
+            : type(t), x(_x), y(_y), w(_w), h(_h),
+            r(_r), g(_g), b(_b) {
+        }
+
+        // Text structer
+        DrawCmd(Type t, float _x, float _y,
+            float _r, float _g, float _b, const std::string& txt)
+            : type(t), x(_x), y(_y),
+            r(_r), g(_g), b(_b), text(txt) {
+        }
+
+        // Image structer
+        DrawCmd(Type t, unsigned int _texID, float _x, float _y, float _w, float _h)
+            : type(t), x(_x), y(_y), w(_w), h(_h),
+            texID(_texID) {
+        }
+
+		// Caret (always 2px wide, height = font size) what I call carridg return - cursor
+        DrawCmd(Type t, float _x, float _y, float _h,
+            float _r, float _g, float _b)
+            : type(t), x(_x), y(_y), w(2.0f), h(_h),
+            r(_r), g(_g), b(_b) {
+        }
+        
+    };
+
 	//struct for storage for the main gui window
     struct SpxGuiWindow {
         int SpxGuiWinID = 0;       // ID for multiple windows
         std::string title;
         bool* open = nullptr;
         bool inWindow = false;
+		bool isPopup = false; //popup
 
         // Window position & size
         float curWinX = 50;
@@ -123,6 +161,10 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         bool mouseDown = false;
         bool mousePressed = false;
         bool mouseReleased = false;
+
+		std::vector<DrawCmd> drawList; // for widgets  to add their draw commands
+
+        
 		
     };
     // global-only things into a single ContextAddInputChar
@@ -144,6 +186,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
 	inline std::vector<SpxGuiWindow> gWindows; // later for multiple windows
 	inline SpxGuiWindow* gCurrent = nullptr; // later for multiple windows
+	inline int gActiveWinID = -1; // later for multiple windows focus
     Style style;
 
     struct Image {
@@ -476,95 +519,10 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 		gInputChars.clear(); // clear input chars each frame
     }
 	Style gStyle; // global style instance
-	// Drawing functions default window 
+
+
     inline void Begin(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
-
-		auto it = std::find_if(gWindows.begin(), gWindows.end(),
-			[&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
-
-        if (it == gWindows.end()) {
-            gWindows.push_back(SpxGuiWindow());
-            gWindows.back().SpxGuiWinID = SpxGuiWinID;
-            gWindows.back().title = title;
-            gWindows.back().open = p_open;
-            gCurrent = &gWindows.back();
-
-        }
-        else {
-            gCurrent = &(*it);
-			gCurrent->title = title; // update title
-			gCurrent->open = p_open; // update open pointer
-                       
-        }
-
-        if (p_open && !p_open) {
-            gCurrent = nullptr;
-            return;
-        }       
-
-		gCurrent->inWindow = true;  
-
-        // background
-        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->curWinH,
-            style.WindowBgR, style.WindowBgG, style.WindowBgB);
-
-        // header
-        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->headerHeight,
-            style.WindowTopBarR, style.WindowTopBarG, style.WindowTopBarB);
-
-        if (p_open) {
-            float btnSize = gCurrent->headerHeight - 6.0f;
-            float btnX = gCurrent->curWinX + gCurrent->curWinW - btnSize - 4.0f;
-            float btnY = gCurrent->curWinY + 3.0f;
-
-            bool hover = (gCurrent->mouseX >= btnX && gCurrent->mouseX <= btnX + btnSize &&
-                gCurrent->mouseY >= btnY && gCurrent->mouseY <= btnY + btnSize);
-
-            float cr = style.WindowTopButR, cg = style.WindowTopButG, cb = style.WindowTopButB;
-            if (hover) { cr = 0.8f; cg = 0.2f; cb = 0.2f; }
-
-            DrawRect(btnX, btnY, btnSize, btnSize, cr, cg, cb);
-            DrawText(btnX + 4, btnY - 2, "X", 1, 1, 1);
-
-            if (hover && gCurrent->mousePressed) {
-                *p_open = false;
-            }
-        }
-
-        // Handle dragging
-        bool overHeader =
-            (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
-                gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
-
-        if (overHeader && gCurrent->mousePressed) {
-            gCurrent->dragging = true;
-            gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
-            gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
-        }
-        if (gCurrent->mouseReleased) gCurrent->dragging = false;
-        if (gCurrent->dragging && gCurrent->mouseDown) {
-            gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
-            gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
-        }
-		// clamp to screen
-        gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
-        gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
-
-		// Draw title text
-        DrawText(gCurrent->curWinX + 8, gCurrent->curWinY + 4, title, 1, 1, 1);	 
-        
-    }
-	// End the current window
-    inline void End() {
-        if (!gCurrent) return;
-        gCurrent->inWindow = false;
-		gCurrent = nullptr;
-        //std::cout << "[End Window]" << std::endl;
-    }
-
-    // Drawing functions default window 
-    inline void BeginPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
-
+        // find or create window
         auto it = std::find_if(gWindows.begin(), gWindows.end(),
             [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
 
@@ -574,55 +532,205 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             gWindows.back().title = title;
             gWindows.back().open = p_open;
             gCurrent = &gWindows.back();
-
         }
         else {
             gCurrent = &(*it);
-            gCurrent->title = title; // update title
-            gCurrent->open = p_open; // update open pointer
-
         }
 
-        if (p_open && !p_open) {
+        // if window closed, skip
+        if (p_open && !*p_open) {
+            gCurrent = nullptr;
+            return;
+        }
+
+        // mark as used this frame
+        gCurrent->inWindow = true;
+        gCurrent->title = title;
+
+        // reset layout cursor
+        gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
+        gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
+
+        // check header region
+        bool overHeader =
+            (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
+                gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
+
+        // focus / bring to front
+        if (overHeader && gCurrent->mousePressed) {
+            gActiveWinID = gCurrent->SpxGuiWinID;
+
+            // bring to front
+            auto it2 = std::find_if(gWindows.begin(), gWindows.end(),
+                [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == gActiveWinID; });
+            if (it2 != gWindows.end()) {
+                SpxGuiWindow temp = *it2;
+                gWindows.erase(it2);
+                gWindows.push_back(temp);
+                gCurrent = &gWindows.back();
+            }
+
+            // start dragging
+            gCurrent->dragging = true;
+            gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
+            gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
+        }
+
+        // stop dragging
+        if (gCurrent->mouseReleased) {
+            gCurrent->dragging = false;
+        }
+
+        // apply dragging movement
+        if (gCurrent->dragging && gCurrent->mouseDown) {
+            gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
+            gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
+        }
+    }
+
+
+	// End the current window
+    inline void End() {
+        if (!gCurrent) return;
+        gCurrent->inWindow = false;
+		gCurrent = nullptr;
+        //std::cout << "[End Window]" << std::endl;
+    }
+
+    //// Drawing functions Popup window 
+    //inline void BeginPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
+    //    // find or create window
+    //    auto it = std::find_if(gWindows.begin(), gWindows.end(),
+    //        [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
+
+    //    if (it == gWindows.end()) {
+    //        gWindows.push_back(SpxGuiWindow());
+    //        gWindows.back().SpxGuiWinID = SpxGuiWinID;
+    //        gWindows.back().title = title;
+    //        gWindows.back().open = p_open;
+    //        gCurrent = &gWindows.back();
+    //    }
+    //    else {
+    //        gCurrent = &(*it);
+    //    }
+
+    //    // if window closed, skip
+    //    if (p_open && !*p_open) {
+    //        gCurrent = nullptr;
+    //        return;
+    //    }
+
+    //    // mark as used this frame
+    //    gCurrent->inWindow = true;
+    //    gCurrent->title = title;
+
+    //    // reset layout cursor
+    //    gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
+    //    gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
+
+    //    // check header region
+    //    bool overHeader =
+    //        (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
+    //            gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
+
+    //    // focus / bring to front
+    //    if (overHeader && gCurrent->mousePressed) {
+    //        gActiveWinID = gCurrent->SpxGuiWinID;
+
+    //        // bring to front
+    //        auto it2 = std::find_if(gWindows.begin(), gWindows.end(),
+    //            [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == gActiveWinID; });
+    //        if (it2 != gWindows.end()) {
+    //            SpxGuiWindow temp = *it2;
+    //            gWindows.erase(it2);
+    //            gWindows.push_back(temp);
+    //            gCurrent = &gWindows.back();
+    //        }
+
+    //        // start dragging
+    //        gCurrent->dragging = true;
+    //        gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
+    //        gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
+    //    }
+
+    //    // stop dragging
+    //    if (gCurrent->mouseReleased) {
+    //        gCurrent->dragging = false;
+    //    }
+
+    //    // apply dragging movement
+    //    if (gCurrent->dragging && gCurrent->mouseDown) {
+    //        gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
+    //        gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
+    //    }
+
+    //} // End draw pop up
+
+    //inline void EndPopUp() {
+    //    if (!gCurrent) return;
+    //    gCurrent->inWindow = false;
+    //    gCurrent = nullptr;
+    //    //std::cout << "[End Window]" << std::endl;
+    //}
+    // Drawing functions for a popup-style window (no X button)
+    inline void BeginPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
+        // find or create
+        auto it = std::find_if(gWindows.begin(), gWindows.end(),
+            [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
+
+        if (it == gWindows.end()) {
+            gWindows.push_back(SpxGuiWindow());
+            gWindows.back().SpxGuiWinID = SpxGuiWinID;
+            gWindows.back().title = title;
+            gWindows.back().open = p_open;
+            gWindows.back().isPopup = true;   // mark as popup
+            gCurrent = &gWindows.back();
+        }
+        else {
+            gCurrent = &(*it);
+           // gCurrent->isPopup = true; // ensure popup mode if reused
+        }
+
+        if (p_open && !*p_open) {
             gCurrent = nullptr;
             return;
         }
 
         gCurrent->inWindow = true;
+        gCurrent->title = title;
 
-        // background
-        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->curWinH,
-            style.WindowBgR, style.WindowBgG, style.WindowBgB);
+        gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
+        gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
 
-        // header
-        DrawRect(gCurrent->curWinX, gCurrent->curWinY, gCurrent->curWinW, gCurrent->headerHeight,
-            style.WindowTopBarR, style.WindowTopBarG, style.WindowTopBarB);
+        //  close if clicked outside popup bounds
+        if (gCurrent->mousePressed) {
+            bool inside =
+                (gCurrent->mouseX >= gCurrent->curWinX &&
+                    gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
+                    gCurrent->mouseY >= gCurrent->curWinY &&
+                    gCurrent->mouseY <= gCurrent->curWinY + gCurrent->curWinH);
 
-        if (p_open) {
-            float btnSize = gCurrent->headerHeight - 6.0f;
-            float btnX = gCurrent->curWinX + gCurrent->curWinW - btnSize - 4.0f;
-            float btnY = gCurrent->curWinY + 3.0f;
-
-            bool hover = (gCurrent->mouseX >= btnX && gCurrent->mouseX <= btnX + btnSize &&
-                gCurrent->mouseY >= btnY && gCurrent->mouseY <= btnY + btnSize);
-
-            float cr = style.WindowTopButR, cg = style.WindowTopButG, cb = style.WindowTopButB;
-            if (hover) { cr = 0.8f; cg = 0.2f; cb = 0.2f; }
-
-            DrawRect(btnX, btnY, btnSize, btnSize, cr, cg, cb);
-            DrawText(btnX + 4, btnY - 2, "X", 1, 1, 1);
-
-            if (hover && gCurrent->mousePressed) {
-                *p_open = false;
+            if (!inside) {
+                if (p_open) *p_open = false;   // close
             }
         }
 
-        // Handle dragging
+        // same dragging code as before…
         bool overHeader =
             (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
                 gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
 
         if (overHeader && gCurrent->mousePressed) {
+            gActiveWinID = gCurrent->SpxGuiWinID;
+            auto it2 = std::find_if(gWindows.begin(), gWindows.end(),
+                [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == gActiveWinID; });
+            if (it2 != gWindows.end()) {
+                SpxGuiWindow temp = *it2;
+                gWindows.erase(it2);
+                gWindows.push_back(temp);
+                gCurrent = &gWindows.back();
+            }
+
             gCurrent->dragging = true;
             gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
             gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
@@ -632,21 +740,14 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
             gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
         }
-        // clamp to screen
-        gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
-        gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
-
-        // Draw title text
-        DrawText(gCurrent->curWinX + 8, gCurrent->curWinY + 4, title, 1, 1, 1);
-
-    } // End draw pop up
+    }
 
     inline void EndPopUp() {
         if (!gCurrent) return;
         gCurrent->inWindow = false;
         gCurrent = nullptr;
-        //std::cout << "[End Window]" << std::endl;
     }
+
 
     inline Style& GetStyle() { return style; }
 
@@ -724,15 +825,90 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         glDeleteVertexArrays(1, &vao);
 
         glUniform1i(glGetUniformLocation(gShader, "useTex"), 0); // reset
-    }
-
-    
+    }   
 
     inline void Render() {
-        // later: upload draw data to GPU
-        std::cout << "[Render GUI]" << std::endl;
+        for (auto& w : gWindows) {
+            if (w.open && !*w.open) continue;
+
+            // 1. Window background
+            DrawRect(w.curWinX, w.curWinY, w.curWinW, w.curWinH,
+                style.WindowBgR, style.WindowBgG, style.WindowBgB);
+
+            // 2. Header color logic
+            bool isActive = (w.SpxGuiWinID == gActiveWinID);
+
+            float hr = style.WindowTopBarR;
+            float hg = style.WindowTopBarG;
+            float hb = style.WindowTopBarB;
+
+            if (w.isPopup) {
+                // Popups: header matches body color
+                hr = style.WindowBgR;
+                hg = style.WindowBgG;
+                hb = style.WindowBgB;
+            }
+
+            // Brighten header if active
+            if (isActive) {
+                hr = (hr + 0.1f > 1.0f) ? 1.0f : hr + 0.1f;
+                hg = (hg + 0.1f > 1.0f) ? 1.0f : hg + 0.1f;
+                hb = (hb + 0.4f > 1.0f) ? 1.0f : hb + 0.4f;
+            }
+
+            // Draw header bar
+            DrawRect(w.curWinX, w.curWinY, w.curWinW, w.headerHeight, hr, hg, hb);
+
+            // 3. Close button (normal windows only)
+            if (!w.isPopup && w.open) {
+                float btnSize = w.headerHeight - 6.0f;
+                float btnX = w.curWinX + w.curWinW - btnSize - 4.0f;
+                float btnY = w.curWinY + 3.0f;
+
+                bool hover = (w.mouseX >= btnX && w.mouseX <= btnX + btnSize &&
+                    w.mouseY >= btnY && w.mouseY <= btnY + btnSize);
+
+                float cr = style.WindowTopButR;
+                float cg = style.WindowTopButG;
+                float cb = style.WindowTopButB;
+                if (hover) { cr = 0.8f; cg = 0.2f; cb = 0.2f; }
+
+                DrawRect(btnX, btnY, btnSize, btnSize, cr, cg, cb);
+                DrawText(btnX + 4, btnY - 2, "X", 1, 1, 1);
+
+                if (hover && w.mousePressed) {
+                    *w.open = false;
+                }
+            }
+
+            // 4. Title text
+            DrawText(w.curWinX + 8, w.curWinY + 4, w.title.c_str(), 1, 1, 1);
+
+            // 5. Draw recorded widget commands
+            for (auto& cmd : w.drawList) {
+                switch (cmd.type) {
+                case DrawCmd::RECT:
+                    DrawRect(cmd.x, cmd.y, cmd.w, cmd.h, cmd.r, cmd.g, cmd.b);
+                    break;
+                case DrawCmd::TEXT:
+                    DrawText(cmd.x, cmd.y, cmd.text.c_str(), cmd.r, cmd.g, cmd.b);
+                    break;
+                case DrawCmd::IMAGE:
+                    DrawImage(cmd.texID, cmd.x, cmd.y, cmd.w, cmd.h);
+                    break;
+                case DrawCmd::CARET:
+                    DrawRect(cmd.x, cmd.y, cmd.w, cmd.h, cmd.r, cmd.g, cmd.b);
+                    break;
+                }
+            }
+
+            // Clear drawList for next frame
+            w.drawList.clear();
+        }
     }
 
+
+    
 } // namespace SpxGui
 
 

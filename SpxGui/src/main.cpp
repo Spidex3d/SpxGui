@@ -14,7 +14,7 @@ int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
 	GLWIN_LOG_INFO("This is an info message.");
 	
-	GLWIN_window* window = GLwin_CreateWindow(800, 600, L"Starting GLwin! with Modern OpenGL");
+	GLWIN_window* window = GLwin_CreateWindow(800, 600, L"GLwin! with Modern OpenGL and SpxGui");
 
 	if (!window) {
 		std::cerr << "Failed to create GLwin window!" << std::endl;
@@ -56,6 +56,7 @@ int main() {
 
 	bool showWin1 = true;
 	bool showWin2 = false;
+	bool showPopup = false;
 	bool showColWin1 = false;
 	while (!GLwinWindowShouldClose(window)) {
 		
@@ -83,10 +84,17 @@ int main() {
 		
 		// ------------GUI Rendering code ------------
 		
+		
+		
+
 		if (showWin1) {
-			SpxGui::Begin("Lighting Editor", &showWin1,1);   // will draw rect
-			if (SpxGui::Button("Add Light", 100, 30)) {
+			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
+			if (SpxGui::ButtonNew("Add Light", 100, 30)) {
 				std::cout << "Add Light clicked\n";
+			}
+			if (SpxGui::Button("Open New Window", 200, 30)) {
+				std::cout << "New Window\n";
+				showWin2 = true;
 			}
 			
 
@@ -98,14 +106,14 @@ int main() {
 			SpxGui::InputText("Text Name_01", (char*)buf2, sizeof(buf2), 200, 30);
 					
 
-			if (SpxGui::Button("Open New Window", 200, 30)) {
+			if (SpxGui::ButtonNew("Open New Window", 200, 30)) {
 				std::cout << "New Window\n";
 				showWin2 = true;
 			}
 			SpxGui::SeparatorText("Light Properties", 200);
-			SpxGui::ColoredLalel(1.0f, 1.0f, 0.0f, "Color Lable_1:");
+			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "Color Lable_1:");
 			SpxGui::SeparatorLine(200);
-			SpxGui::ColoredLalel(1.0f, 1.0f, 0.0f, "Color Lable_2:");
+			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "Color Lable_2:");
 			
 			float lightR = 1.0f, lightG = 1.0f, lightB = 0.0f;
 			// Color box test
@@ -118,7 +126,7 @@ int main() {
 			SpxGui::End();
 		}
 		if (showWin2) {
-			SpxGui::Begin("Texture Editor", &showWin2, 2);   // will draw rect
+			SpxGui::Begin("Demo Editor_02", &showWin2, 2);   // will draw rect
 			float color[4] = { 1.0f, 2.0f, 3.0f, 1.0f };
 			SpxGui::Drag4Float(color, 60, 20);
 
@@ -136,6 +144,9 @@ int main() {
 			SpxGui::SameLine();
 			if (SpxGui::ImageButton("../SpxGui/Textures/Brick.jpg", 50, 50))
 				std::cout << "ImageButton clicked_01\n";		
+				SpxGui::SameLine();
+			if (SpxGui::ImageButton("../SpxGui/Textures/github.jpg", 50, 50))
+				std::cout << "ImageButton clicked Spidex\n";
 				
 			
 			if (SpxGui::ImageBox("../SpxGui/Textures/container2.png", 100, 100, "Wooden Box"))
@@ -145,19 +156,30 @@ int main() {
 
 			float col[3] = { 0.8f, 0.2f, 0.3f };
 			if (SpxGui::ColorEdit3("Clear Color", col)) {
-				showColWin1 = true;
+				//showColWin1 = true;
+			   showPopup = true;
 			}
 
 			SpxGui::End();
 		}
 
-		if (showColWin1) {  // will draw rect
-			SpxGui::BeginPopUp("Color Editor", &showColWin1, 3); 
-			//std::cout << "Color changed: " << col[0] << ", " << col[1] << ", " << col[2] << std::endl;
+		if (showPopup) {  // will draw a popup window
+			SpxGui::BeginPopUp("Color Editor", &showPopup, 3);
+			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "This is a Popup:");
+			if (SpxGui::Button("Close Popup", 120, 30)) {
+				showPopup = false;
+			}
+
 			SpxGui::EndPopUp();
 		}
-		// needs to be after all widgets are drawn in main as it clears the text buffer
+
 		SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);
+
+		SpxGui::Render();  // will render all windows
+
+		// ------------ End of GUI Rendering code ------------
+
+		// needs to be after all widgets are drawn in main as it clears the text buffer
 
 		GLwinSwapBuffers(window);
 

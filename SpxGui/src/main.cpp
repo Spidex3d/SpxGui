@@ -58,6 +58,8 @@ int main() {
 	bool showWin2 = false;
 	bool showPopup = false;
 	bool showColWin1 = false;
+	static SpxGui::Image bgImg;
+	static std::string currentImage = "";   // empty = none shown
 	while (!GLwinWindowShouldClose(window)) {
 		
 		GLwinPollEvents(); // New non-blocking event polling
@@ -89,6 +91,11 @@ int main() {
 
 		if (showWin1) {
 			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
+
+			
+			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
+			SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
+
 			if (SpxGui::ButtonNew("Add Light", 100, 30)) {
 				std::cout << "Add Light clicked\n";
 			}
@@ -99,8 +106,8 @@ int main() {
 			
 
 			// testing Style changes
-			static char buf[32] = "Testting";  // make a writable buffer
-			static char buf2[32] = "Test";  // make a writable buffer
+			static char buf[32] = "Input Text";  // make a writable buffer
+			static char buf2[32] = "Input Text";  // make a writable buffer
 			SpxGui::InputText("Text Name", (char*)buf, sizeof(buf), 200, 30);
 						
 			SpxGui::InputText("Text Name_01", (char*)buf2, sizeof(buf2), 200, 30);
@@ -127,6 +134,10 @@ int main() {
 		}
 		if (showWin2) {
 			SpxGui::Begin("Demo Editor_02", &showWin2, 2);   // will draw rect
+			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
+			SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
+
+
 			float color[4] = { 1.0f, 2.0f, 3.0f, 1.0f };
 			SpxGui::Drag4Float(color, 60, 20);
 
@@ -139,23 +150,35 @@ int main() {
 			float pos[3] = { 1.0f, 2.0f, 3.0f };
 			SpxGui::Drag3Float(pos, 60, 20);
 
-			if (SpxGui::ImageButton("../SpxGui/Textures/Brick.jpg", 50, 50))
-				std::cout << "ImageButton clicked\n";
-			SpxGui::SameLine();
-			if (SpxGui::ImageButton("../SpxGui/Textures/Brick.jpg", 50, 50))
-				std::cout << "ImageButton clicked_01\n";		
-				SpxGui::SameLine();
-			if (SpxGui::ImageButton("../SpxGui/Textures/github.jpg", 50, 50))
-				std::cout << "ImageButton clicked Spidex\n";
-				
-			
-			if (SpxGui::ImageBox("../SpxGui/Textures/container2.png", 100, 100, "Wooden Box"))
-				std::cout << "Image Box clicked\n";
 
-			
+			// inside your loop:
+			if (SpxGui::ImageButton("../SpxGui/Textures/Brick.jpg", 50, 50)) {
+				std::cout << "Brick clicked\n";
+				currentImage = "../SpxGui/Textures/Brick.jpg";   // set active image
+			}
+			SpxGui::SameLine();
+
+			if (SpxGui::ImageButton("../SpxGui/Textures/container2.png", 50, 50)) {
+				std::cout << "Container clicked\n";
+				currentImage = "../SpxGui/Textures/container2.png";
+			}
+			SpxGui::SameLine();
+
+			if (SpxGui::ImageButton("../SpxGui/Textures/github.jpg", 50, 50)) {
+				std::cout << "GitHub clicked\n";
+				currentImage = "../SpxGui/Textures/github.jpg";
+			}
+
+			// now always draw the currently selected image
+			if (!currentImage.empty()) {
+				if (SpxGui::ImageBox(currentImage, 100, 100, "Image Preview")) {
+					std::cout << "Image Box clicked\n";
+				}
+			}
+						
 
 			float col[3] = { 0.8f, 0.2f, 0.3f };
-			if (SpxGui::ColorEdit3("Clear Color", col)) {
+			if (SpxGui::ColorEdit3("Select Color", col)) {
 				//showColWin1 = true;
 			   showPopup = true;
 			}

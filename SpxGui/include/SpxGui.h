@@ -138,6 +138,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         bool* open = nullptr;
         bool inWindow = false;
 		bool isPopup = false; //popup
+        unsigned int backgroundTex = 0; // 0 = none
 
         // Window position & size
         float curWinX = 50;
@@ -687,9 +688,13 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             gCurrent = &gWindows.back();
         }
         else {
-            gCurrent = &(*it);
-           // gCurrent->isPopup = true; // ensure popup mode if reused
-        }
+			// Set current popup window to be the top window
+			SpxGuiWindow temp = *it;
+			gWindows.erase(it);
+			gWindows.push_back(temp);
+			gCurrent = &gWindows.back();
+		}
+			
 
         if (p_open && !*p_open) {
             gCurrent = nullptr;
@@ -849,6 +854,20 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
                 hb = style.WindowBgB;
             }
 
+            float bx = w.curWinX;
+            float by = w.curWinY;
+            float bw = w.curWinW;
+            float bh = w.curWinH;
+
+            // 1. Window background (image if set, otherwise solid)
+            if (w.backgroundTex != 0) {
+                DrawImage(w.backgroundTex, bx, by, bw, bh);
+            }
+            else {
+                DrawRect(bx, by, bw, bh,
+                    style.WindowBgR, style.WindowBgG, style.WindowBgB);
+            }
+
             // Brighten header if active
             if (isActive) {
                 hr = (hr + 0.1f > 1.0f) ? 1.0f : hr + 0.1f;
@@ -883,6 +902,17 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
             // 4. Title text
             DrawText(w.curWinX + 8, w.curWinY + 4, w.title.c_str(), 1, 1, 1);
+
+
+            // 5. Border (3D effect: light top/left, dark bottom/right)
+        // top
+            DrawRect(bx, by, bw, 1, 0.8f, 0.8f, 0.8f);
+            // left
+            DrawRect(bx, by, 1, bh, 0.8f, 0.8f, 0.8f);
+            // bottom
+            DrawRect(bx, by + bh - 1, bw, 1, 0.1f, 0.1f, 0.1f);
+            // right
+            DrawRect(bx + bw - 1, by, 1, bh, 0.1f, 0.1f, 0.1f);
 
             // 5. Draw recorded widget commands
             for (auto& cmd : w.drawList) {

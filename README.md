@@ -9,4 +9,4 @@ This projects aim is to make my own gui which works with my GLwin project but sh
 Only works on Windows.
 
  ✨ Project SpxGui 
-https://github.com/Spidex3d/SpxGui/blob/fee8ec2f0c31906c87cc39a51a42dc9d5e281088/SpxGui/Textures/GitHub/main_image.jpg
+![image_alt](https://github.com/Spidex3d/SpxGui/blob/fee8ec2f0c31906c87cc39a51a42dc9d5e281088/SpxGui/Textures/GitHub/main_image.jpg)

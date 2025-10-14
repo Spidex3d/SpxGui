@@ -686,6 +686,87 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         gCurrent->inWindow = false;
         gCurrent = nullptr;
     }
+	// Color Popup
+    // Drawing functions for a popup-style window (no X button)
+    inline void BeginColPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
+        // find or create
+        auto it = std::find_if(gWindows.begin(), gWindows.end(),
+            [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
+
+        if (it == gWindows.end()) {
+            gWindows.push_back(SpxGuiWindow());
+            gWindows.back().SpxGuiWinID = SpxGuiWinID;
+            gWindows.back().title = title;
+            gWindows.back().open = p_open;
+            gWindows.back().isPopup = true;   // mark as popup
+            gCurrent = &gWindows.back();
+        }
+        else {
+            // Set current popup window to be the top window
+            SpxGuiWindow temp = *it;
+            gWindows.erase(it);
+            gWindows.push_back(temp);
+            gCurrent = &gWindows.back();
+        }
+
+
+        if (p_open && !*p_open) {
+            gCurrent = nullptr;
+            return;
+        }
+
+        gCurrent->inWindow = true;
+        gCurrent->title = title;
+
+        gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
+        gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
+
+        //  close if clicked outside popup bounds
+        if (gCurrent->mousePressed) {
+            bool inside =
+                (gCurrent->mouseX >= gCurrent->curWinX &&
+                    gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
+                    gCurrent->mouseY >= gCurrent->curWinY &&
+                    gCurrent->mouseY <= gCurrent->curWinY + gCurrent->curWinH);
+
+            if (!inside) {
+                if (p_open) *p_open = false;   // close
+            }
+        }
+
+        // same dragging code as before…
+        bool overHeader =
+            (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
+                gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
+
+        if (overHeader && gCurrent->mousePressed) {
+            gActiveWinID = gCurrent->SpxGuiWinID;
+            auto it2 = std::find_if(gWindows.begin(), gWindows.end(),
+                [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == gActiveWinID; });
+            if (it2 != gWindows.end()) {
+                SpxGuiWindow temp = *it2;
+                gWindows.erase(it2);
+                gWindows.push_back(temp);
+                gCurrent = &gWindows.back();
+            }
+
+            gCurrent->dragging = true;
+            gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
+            gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
+        }
+        if (gCurrent->mouseReleased) gCurrent->dragging = false;
+        if (gCurrent->dragging && gCurrent->mouseDown) {
+            gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
+            gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
+        }
+    }
+
+    inline void EndColPopUp() {
+        if (!gCurrent) return;
+        gCurrent->inWindow = false;
+        gCurrent = nullptr;
+    }
+
 	// ------------------------------------------------------------ Tables ------------------------------------------------------------
 
     inline void BeginTable(const char* title, int column_count, float totalWidth = 0.0f) {

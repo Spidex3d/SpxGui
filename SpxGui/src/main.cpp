@@ -191,7 +191,7 @@ int main() {
 		}
 
 		if (showPopup) {  // will draw a popup window
-			SpxGui::BeginPopUp("Color Editor", &showPopup, 3);
+			SpxGui::BeginColPopUp("Color Editor", &showPopup, 3); // move all of this to ColorEdit3
 			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "This Popup Uses Tables:");
 
 			static float hue = 0.0f;   // range 0..1
@@ -241,7 +241,7 @@ int main() {
 
 			SpxGui::EndTable();
 
-			SpxGui::EndPopUp();
+			SpxGui::EndColPopUp();
 		}
 
 		SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);

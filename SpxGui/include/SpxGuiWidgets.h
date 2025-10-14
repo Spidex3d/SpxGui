@@ -595,13 +595,13 @@ namespace SpxGui
 		if (!gCurrent) return false;
 		float x = gCurrent->cursorX;
 		float y = gCurrent->cursorY;
-		// Draw label
+		//  ---------------------------------------- Set Up ColorEdit3 ----------------------------------------
+		
 
 		gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, y, 1, 1, 1, label));
 		// We need a drag3Float for RGB and a drag4Float for RGBA here
 		// we will also need a popup color picker window
 		// we will also need a vertical slider for HSV and Alpha
-
 
 		// Color box
 		float boxSize = g.fontSize; // square box
@@ -636,6 +636,8 @@ namespace SpxGui
 				pickingComponent = (pickingComponent + 1) % 3;
 			}
 		}
+		
+
 		gCurrent->cursorY += boxSize + gStyle.ItemSpacingY; // move cursor down for next item
 		gCurrent->lastItemW = (boxX + boxSize) - x;
 		gCurrent->lastItemH = boxSize;

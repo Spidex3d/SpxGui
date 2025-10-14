@@ -131,6 +131,15 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         
     };
 
+    struct TableState {
+        int columnCount = 0;
+        int currentColumn = 0;
+        float startX = 0.0f;
+        float rowY = 0.0f;
+        float colWidth = 0.0f;
+        bool active = false;
+    };
+
 	//struct for storage for the main gui window
     struct SpxGuiWindow {
         int SpxGuiWinID = 0;       // ID for multiple windows
@@ -165,7 +174,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
 		std::vector<DrawCmd> drawList; // for widgets  to add their draw commands
 
-        
+		TableState table; // for tables
 		
     };
     // global-only things into a single ContextAddInputChar
@@ -521,7 +530,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     }
 	Style gStyle; // global style instance
 
-
+	// main widget window functions
     inline void Begin(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
         // find or create window
         auto it = std::find_if(gWindows.begin(), gWindows.end(),
@@ -598,81 +607,6 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         //std::cout << "[End Window]" << std::endl;
     }
 
-    //// Drawing functions Popup window 
-    //inline void BeginPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
-    //    // find or create window
-    //    auto it = std::find_if(gWindows.begin(), gWindows.end(),
-    //        [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });
-
-    //    if (it == gWindows.end()) {
-    //        gWindows.push_back(SpxGuiWindow());
-    //        gWindows.back().SpxGuiWinID = SpxGuiWinID;
-    //        gWindows.back().title = title;
-    //        gWindows.back().open = p_open;
-    //        gCurrent = &gWindows.back();
-    //    }
-    //    else {
-    //        gCurrent = &(*it);
-    //    }
-
-    //    // if window closed, skip
-    //    if (p_open && !*p_open) {
-    //        gCurrent = nullptr;
-    //        return;
-    //    }
-
-    //    // mark as used this frame
-    //    gCurrent->inWindow = true;
-    //    gCurrent->title = title;
-
-    //    // reset layout cursor
-    //    gCurrent->cursorX = gCurrent->curWinX + gStyle.WindowPaddingX;
-    //    gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY;
-
-    //    // check header region
-    //    bool overHeader =
-    //        (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
-    //            gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
-
-    //    // focus / bring to front
-    //    if (overHeader && gCurrent->mousePressed) {
-    //        gActiveWinID = gCurrent->SpxGuiWinID;
-
-    //        // bring to front
-    //        auto it2 = std::find_if(gWindows.begin(), gWindows.end(),
-    //            [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == gActiveWinID; });
-    //        if (it2 != gWindows.end()) {
-    //            SpxGuiWindow temp = *it2;
-    //            gWindows.erase(it2);
-    //            gWindows.push_back(temp);
-    //            gCurrent = &gWindows.back();
-    //        }
-
-    //        // start dragging
-    //        gCurrent->dragging = true;
-    //        gCurrent->dragOffsetX = gCurrent->mouseX - gCurrent->curWinX;
-    //        gCurrent->dragOffsetY = gCurrent->mouseY - gCurrent->curWinY;
-    //    }
-
-    //    // stop dragging
-    //    if (gCurrent->mouseReleased) {
-    //        gCurrent->dragging = false;
-    //    }
-
-    //    // apply dragging movement
-    //    if (gCurrent->dragging && gCurrent->mouseDown) {
-    //        gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
-    //        gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
-    //    }
-
-    //} // End draw pop up
-
-    //inline void EndPopUp() {
-    //    if (!gCurrent) return;
-    //    gCurrent->inWindow = false;
-    //    gCurrent = nullptr;
-    //    //std::cout << "[End Window]" << std::endl;
-    //}
     // Drawing functions for a popup-style window (no X button)
     inline void BeginPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
         // find or create
@@ -752,6 +686,54 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         gCurrent->inWindow = false;
         gCurrent = nullptr;
     }
+	// ------------------------------------------------------------ Tables ------------------------------------------------------------
+
+    inline void BeginTable(const char* title, int column_count, float totalWidth = 0.0f) {
+        if (!gCurrent) return;
+
+        gCurrent->table.active = true;
+        gCurrent->table.columnCount = column_count;
+        gCurrent->table.currentColumn = 0;
+        gCurrent->table.startX = gCurrent->cursorX;
+        gCurrent->table.rowY = gCurrent->cursorY;
+
+        // auto-fit column width if not set
+        if (totalWidth <= 0.0f) {
+            totalWidth = gCurrent->curWinW - 2 * gStyle.WindowPaddingX;
+        }
+        gCurrent->table.colWidth = totalWidth / column_count;
+
+	}	
+    //TableNextColumn
+    inline void TableNextColumn() {
+        if (!gCurrent || !gCurrent->table.active) return;
+
+        gCurrent->table.currentColumn++;
+        if (gCurrent->table.currentColumn >= gCurrent->table.columnCount) {
+            // move to next row
+            gCurrent->table.currentColumn = 0;
+            gCurrent->cursorY = gCurrent->table.rowY + gCurrent->lastItemH + gStyle.ItemSpacingY;
+            gCurrent->table.rowY = gCurrent->cursorY;
+        }
+
+        gCurrent->cursorX = gCurrent->table.startX + gCurrent->table.currentColumn * gCurrent->table.colWidth;
+    }
+	//TableNextRow
+    inline void TableNextRow() {
+        if (!gCurrent || !gCurrent->table.active) return;
+
+        gCurrent->cursorY = gCurrent->table.rowY + gCurrent->lastItemH + gStyle.ItemSpacingY;
+        gCurrent->table.rowY = gCurrent->cursorY;
+        gCurrent->table.currentColumn = 0;
+        gCurrent->cursorX = gCurrent->table.startX;
+    }
+    inline void EndTable() {
+        if (!gCurrent || !gCurrent->table.active) return;
+        gCurrent->table.active = false;
+
+        // move cursor below the whole table
+        gCurrent->cursorY = gCurrent->table.rowY + gCurrent->lastItemH + gStyle.ItemSpacingY;
+	}   
 
 
     inline Style& GetStyle() { return style; }
@@ -934,6 +916,24 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
             // Clear drawList for next frame
             w.drawList.clear();
+        }
+    }
+
+	// ---------------------------------------------------- Color Picker ----------------------------------------------------
+
+    inline void HSVtoRGB(float h, float s, float v, float& r, float& g, float& b) {
+        int i = int(h * 6.0f);
+        float f = h * 6.0f - i;
+        float p = v * (1.0f - s);
+        float q = v * (1.0f - f * s);
+        float t = v * (1.0f - (1.0f - f) * s);
+        switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
         }
     }
 

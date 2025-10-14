@@ -65,6 +65,43 @@ namespace SpxGui
 			return clicked;
 		}
 
+		inline bool ColorBoxLabel(const char* label, float* r, float* g, float* b, float w = 40.0f, float h = 20.0f) {
+			if (!gCurrent) return false;
+
+			float x = gCurrent->cursorX;
+			float y = gCurrent->cursorY;
+
+			bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+				gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+			bool clicked = (hover && gCurrent->mousePressed);
+
+			// --- record color box ---
+			gCurrent->drawList.push_back(
+				DrawCmd(DrawCmd::RECT, x, y, w, h, *r, *g, *b)
+			);
+
+			// --- record border ---
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, w + 2, 1, 0, 0, 0)); // top
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y + h, w + 2, 1, 0, 0, 0)); // bottom
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, 1, h + 2, 0, 0, 0)); // left
+			gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x + w, y - 1, 1, h + 2, 0, 0, 0)); // right
+
+			// --- optional label ---
+			if (label) {
+				gCurrent->drawList.push_back(
+					DrawCmd(DrawCmd::TEXT, x + w + 6, y, 1, 1, 1, label)
+				);
+			}
+
+			// advance cursor
+			gCurrent->cursorY += h + gStyle.ItemSpacingY;
+
+			gCurrent->lastItemW = w;
+			gCurrent->lastItemH = h;
+
+			return clicked;
+		}
+
     
 	// ----------------------------------------------- Input Text Section ---------------------------------------
 	// temp
@@ -428,95 +465,7 @@ namespace SpxGui
 		// Advance cursor by one line height (or just spacing if you prefer)
 		gCurrent->cursorY += g.fontSize + gStyle.ItemSpacingY;
 	}
-	// --------------------------------------- Color Picker Section ---------------------------------------
-	inline bool ColorBox(const char* label, float* r, float* g, float* b, float w = 40.0f, float h = 20.0f) {
-		if (!gCurrent) return false;
-
-		float x = gCurrent->cursorX;
-		float y = gCurrent->cursorY;
-
-		bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
-			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
-		bool clicked = (hover && gCurrent->mousePressed);
-
-		// --- record color box ---
-		gCurrent->drawList.push_back(
-			DrawCmd(DrawCmd::RECT, x, y, w, h, *r, *g, *b)
-		);
-
-		// --- record border ---
-		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, w + 2, 1, 0, 0, 0)); // top
-		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y + h, w + 2, 1, 0, 0, 0)); // bottom
-		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, 1, h + 2, 0, 0, 0)); // left
-		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x + w, y - 1, 1, h + 2, 0, 0, 0)); // right
-
-		// --- optional label ---
-		if (label) {
-			gCurrent->drawList.push_back(
-				DrawCmd(DrawCmd::TEXT, x + w + 6, y, 1, 1, 1, label)
-			);
-		}
-
-		// advance cursor
-		gCurrent->cursorY += h + gStyle.ItemSpacingY;
-
-		gCurrent->lastItemW = w;
-		gCurrent->lastItemH = h;
-
-		return clicked;
-	}
-	// ColorEdit3 - RGB color editor with color box and basic interaction
-	inline bool ColorEdit3(const char* label, float col[3]) {
-		if (!gCurrent) return false;
-		float x = gCurrent->cursorX;
-		float y = gCurrent->cursorY;
-		// Draw label
-		
-		gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, y, 1, 1, 1, label));
-		// We need a drag3Float for RGB and a drag4Float for RGBA here
-		// we will also need a popup color picker window
-		// we will also need a vertical slider for HSV and Alpha
-
-
-		// Color box
-		float boxSize = g.fontSize; // square box
-		float boxX = x + 100; // fixed offset for simplicity
-		float boxY = y;
-		// Draw color box
-		gCurrent->drawList.push_back(
-			DrawCmd(DrawCmd::RECT, boxX, boxY, boxSize, boxSize, col[0], col[1], col[2]));
-
-		bool hover = (gCurrent->mouseX >= boxX && gCurrent->mouseX <= boxX + boxSize &&
-			gCurrent->mouseY >= boxY && gCurrent->mouseY <= boxY + boxSize);
-		bool clicked = (hover && gCurrent->mousePressed);
-		static bool picking = false;
-		static int pickingComponent = 0; // 0=R,1=G,2=B
-		if (clicked) {
-			picking = true;
-			pickingComponent = 0; // start with Red
-		}
-		if (gCurrent->mouseReleased) {
-			picking = false;
-		}
-		if (picking) {
-			if (gCurrent->mouseDown) {
-				// Adjust current component based on mouse X movement
-				float deltaX = gCurrent->mouseX - (boxX + boxSize * 0.5f);
-				col[pickingComponent] += deltaX * 0.005f; // sensitivity
-				if (col[pickingComponent] < 0.0f) col[pickingComponent] = 0.0f;
-				if (col[pickingComponent] > 1.0f) col[pickingComponent] = 1.0f;
-			}
-			else if (gCurrent->mousePressed) {
-				// Cycle to next component on click
-				pickingComponent = (pickingComponent + 1) % 3;
-			}
-		}
-		gCurrent->cursorY += boxSize + gStyle.ItemSpacingY; // move cursor down for next item
-		gCurrent->lastItemW = (boxX + boxSize) - x;
-		gCurrent->lastItemH = boxSize;
-
-		return clicked || picking;
-	}
+	
 
 	// --------------------------------------- Image Section ---------------------------------------
 
@@ -602,6 +551,196 @@ namespace SpxGui
 		gCurrent->lastItemW = w;
 		return clicked;
 	}
+
+	// --------------------------------------- Color Picker Section ---------------------------------------
+
+	inline bool ColorBox(const char* label, float* r, float* g, float* b, float w = 40.0f, float h = 40.0f) {
+		if (!gCurrent) return false;
+
+		float x = gCurrent->cursorX;
+		float y = gCurrent->cursorY;
+
+		bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+		bool clicked = (hover && gCurrent->mousePressed);
+
+		// --- record color box ---
+		gCurrent->drawList.push_back(
+			DrawCmd(DrawCmd::RECT, x, y, w, h, *r, *g, *b)
+		);
+
+		// --- record border ---
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, w + 2, 1, 0, 0, 0)); // top
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y + h, w + 2, 1, 0, 0, 0)); // bottom
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 1, y - 1, 1, h + 2, 0, 0, 0)); // left
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x + w, y - 1, 1, h + 2, 0, 0, 0)); // right
+
+		// --- optional label ---
+		if (label) {
+			gCurrent->drawList.push_back(
+				DrawCmd(DrawCmd::TEXT, x + w + 6, y, 1, 1, 1, label)
+			);
+		}
+
+		// advance cursor
+		gCurrent->cursorY += h + gStyle.ItemSpacingY;
+
+		gCurrent->lastItemW = w;
+		gCurrent->lastItemH = h;
+
+		return clicked;
+	}
+	// ColorEdit3 - RGB color editor with color box and basic interaction
+	inline bool ColorEdit3(const char* label, float col[3]) {
+		if (!gCurrent) return false;
+		float x = gCurrent->cursorX;
+		float y = gCurrent->cursorY;
+		// Draw label
+
+		gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, y, 1, 1, 1, label));
+		// We need a drag3Float for RGB and a drag4Float for RGBA here
+		// we will also need a popup color picker window
+		// we will also need a vertical slider for HSV and Alpha
+
+
+		// Color box
+		float boxSize = g.fontSize; // square box
+		float boxX = x + 100; // fixed offset for simplicity
+		float boxY = y;
+		// Draw color box
+		gCurrent->drawList.push_back(
+			DrawCmd(DrawCmd::RECT, boxX, boxY, boxSize, boxSize, col[0], col[1], col[2]));
+
+		bool hover = (gCurrent->mouseX >= boxX && gCurrent->mouseX <= boxX + boxSize &&
+			gCurrent->mouseY >= boxY && gCurrent->mouseY <= boxY + boxSize);
+		bool clicked = (hover && gCurrent->mousePressed);
+		static bool picking = false;
+		static int pickingComponent = 0; // 0=R,1=G,2=B
+		if (clicked) {
+			picking = true;
+			pickingComponent = 0; // start with Red
+		}
+		if (gCurrent->mouseReleased) {
+			picking = false;
+		}
+		if (picking) {
+			if (gCurrent->mouseDown) {
+				// Adjust current component based on mouse X movement
+				float deltaX = gCurrent->mouseX - (boxX + boxSize * 0.5f);
+				col[pickingComponent] += deltaX * 0.005f; // sensitivity
+				if (col[pickingComponent] < 0.0f) col[pickingComponent] = 0.0f;
+				if (col[pickingComponent] > 1.0f) col[pickingComponent] = 1.0f;
+			}
+			else if (gCurrent->mousePressed) {
+				// Cycle to next component on click
+				pickingComponent = (pickingComponent + 1) % 3;
+			}
+		}
+		gCurrent->cursorY += boxSize + gStyle.ItemSpacingY; // move cursor down for next item
+		gCurrent->lastItemW = (boxX + boxSize) - x;
+		gCurrent->lastItemH = boxSize;
+
+		return clicked || picking;
+	}
+
+	inline bool ColorSVSquare(float hue, float& sat, float& val,
+		float x, float y, float size) {
+		if (!gCurrent) return false;
+
+		bool changed = false;
+
+		// Draw square as grid of small quads
+		//int steps = 16; // increase for smoother
+		int steps = 32; // increase for smoother
+		float step = size / steps;
+		for (int i = 0; i < steps; i++) {
+			for (int j = 0; j < steps; j++) {
+				float s0 = (float)i / steps;
+				float v0 = 1.0f - (float)j / steps;
+				float s1 = (float)(i + 1) / steps;
+				float v1 = 1.0f - (float)(j + 1) / steps;
+
+				float r0, g0, b0, r1, g1, b1, r2, g2, b2, r3, g3, b3;
+				HSVtoRGB(hue, s0, v0, r0, g0, b0);
+				HSVtoRGB(hue, s1, v0, r1, g1, b1);
+				HSVtoRGB(hue, s1, v1, r2, g2, b2);
+				HSVtoRGB(hue, s0, v1, r3, g3, b3);
+
+				// average color for crude quad
+				float r = (r0 + r1 + r2 + r3) * 0.25f; //0.25f;
+				float g = (g0 + g1 + g2 + g3) * 0.25f;
+				float b = (b0 + b1 + b2 + b3) * 0.25f;
+
+				gCurrent->drawList.push_back(
+					DrawCmd(DrawCmd::RECT,
+						x + i * step, y + j * step,
+						step, step, r, g, b));
+			}
+		}
+
+		// Handle mouse input
+		bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + size &&
+			gCurrent->mouseY >= y && gCurrent->mouseY <= y + size);
+		if (hover && gCurrent->mouseDown) {
+			float relX = (gCurrent->mouseX - x) / size;
+			float relY = (gCurrent->mouseY - y) / size;
+			sat = std::clamp(relX, 0.0f, 1.0f);
+			val = 1.0f - std::clamp(relY, 0.0f, 1.0f);
+			changed = true;
+		}
+
+		// Draw selection marker
+		float markerX = x + sat * size;
+		float markerY = y + (1.0f - val) * size;
+		gCurrent->drawList.push_back(
+			DrawCmd(DrawCmd::RECT, markerX - 2, markerY - 2, 5, 5, 1, 1, 1));
+
+		return changed;
+	}
+
+	inline bool HueSlider(float& hue, float x, float y, float w, float h) {
+		if (!gCurrent) return false;
+		bool changed = false;
+
+		int steps = 30; // number of colored segments
+		float step = w / steps;
+		for (int i = 0; i < steps; i++) {
+			float t0 = (float)i / steps;
+			float t1 = (float)(i + 1) / steps;
+			float r0, g0, b0, r1, g1, b1;
+			HSVtoRGB(t0, 1.0f, 1.0f, r0, g0, b0);
+			HSVtoRGB(t1, 1.0f, 1.0f, r1, g1, b1);
+
+			// average color for strip segment
+			float r = (r0 + r1) * 0.5f;
+			float g = (g0 + g1) * 0.5f;
+			float b = (b0 + b1) * 0.5f;
+
+			gCurrent->drawList.push_back(
+				DrawCmd(DrawCmd::RECT,
+					x + i * step, y,
+					step, h, r, g, b));
+		}
+
+		// Handle mouse input
+		bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+		if (hover && gCurrent->mouseDown) {
+			float relX = (gCurrent->mouseX - x) / w;
+			hue = std::clamp(relX, 0.0f, 1.0f);
+			changed = true;
+		}
+
+		// Draw selection marker
+		float markerX = x + hue * w;
+		gCurrent->drawList.push_back(
+			DrawCmd(DrawCmd::RECT, markerX - 2, y - 2, 4, h + 4, 1, 1, 1));
+
+		return changed;
+	}
+	// --------------------------------------- Color Picker Section end ---------------------------------------
+
+
 
 
 } // namespace MyNamespace

@@ -14,7 +14,8 @@ int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
 	GLWIN_LOG_INFO("This is an info message.");
 	
-	GLWIN_window* window = GLwin_CreateWindow(800, 600, L"GLwin! with Modern OpenGL and SpxGui");
+	//GLWIN_window* window = GLwin_CreateWindow(800, 600, L"GLwin! with Modern OpenGL and SpxGui");
+	GLWIN_window* window = GLwin_CreateWindow(1200, 800, L"GLwin! with Modern OpenGL and SpxGui");
 
 	if (!window) {
 		std::cerr << "Failed to create GLwin window!" << std::endl;
@@ -60,6 +61,8 @@ int main() {
 	bool showColWin1 = false;
 	static SpxGui::Image bgImg;
 	static std::string currentImage = "";   // empty = none shown
+
+	float r = 0.217, g = 0.207, b = 0.184;
 	while (!GLwinWindowShouldClose(window)) {
 		
 		GLwinPollEvents(); // New non-blocking event polling
@@ -81,7 +84,8 @@ int main() {
 		}
 		
 		
-		glClearColor(0.17f, 0.17f, 0.18f, 1.0f);
+		//glClearColor(0.17f, 0.17f, 0.18f, 1.0f);
+		glClearColor(r, g, b, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		
 		// ------------GUI Rendering code ------------
@@ -124,7 +128,7 @@ int main() {
 			
 			float lightR = 1.0f, lightG = 1.0f, lightB = 0.0f;
 			// Color box test
-			if (SpxGui::ColorBox("Light Color", &lightR, &lightG, &lightB)) {
+			if (SpxGui::ColorBoxLabel("Color box label", &lightR, &lightG, &lightB)) {
 				std::cout << "Clicked color box, current color = "
 					<< lightR << ", " << lightG << ", " << lightB << "\n";
 				
@@ -188,10 +192,54 @@ int main() {
 
 		if (showPopup) {  // will draw a popup window
 			SpxGui::BeginPopUp("Color Editor", &showPopup, 3);
-			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "This is a Popup:");
+			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "This Popup Uses Tables:");
+
+			static float hue = 0.0f;   // range 0..1
+			static float sat = 1.0f;   // range 0..1
+			static float val = 1.0f;   // range 0..1
+
+			float svSize = 120.0f;
+
+			// ------------------- Table for SV square and Hue slider -------------------
+			SpxGui::BeginTable("MyTable", 2);
+
+			// -------------------------------- SV Square ------------------------------
+			
+			SpxGui::HSVtoRGB(hue, sat, val, r, g, b);
+
+			if (SpxGui::ColorSVSquare(hue, sat, val, SpxGui::gCurrent->cursorX, SpxGui::gCurrent->cursorY, 120)) {
+				std::cout << "SV changed: S=" << sat << " V=" << val << "\n";
+			}		
+
+			SpxGui::TableNextColumn();
+			SpxGui::ColorBox("Light Color", &r, &g, &b);
+
+			SpxGui::ColorBox("Original", &r, &g, &b);
+
+			SpxGui::TableNextRow();
+			
+			SpxGui::gCurrent->cursorY += 85 + SpxGui::gStyle.ItemSpacingY; //120
+
+
+			// Hue slider (next to SV square)
+			if (SpxGui::HueSlider(hue, SpxGui::gCurrent->cursorX, SpxGui::gCurrent->cursorY, 120, 20)) {
+				std::cout << "Hue=" << hue << "\n";
+			}
+			SpxGui::gCurrent->cursorY += 20 + SpxGui::gStyle.ItemSpacingY;
+
+			float color_r[3] = { r, g, b };
+			SpxGui::Drag3FloatText(color_r);
+
+			float color_4r[4] = { r, g, b, 0.0f };
+			SpxGui::Drag4FloatText(color_4r);
+
+			SpxGui::ColorBox("Light Color", &r, &g, &b);
+
 			if (SpxGui::Button("Close Popup", 120, 30)) {
 				showPopup = false;
 			}
+
+			SpxGui::EndTable();
 
 			SpxGui::EndPopUp();
 		}

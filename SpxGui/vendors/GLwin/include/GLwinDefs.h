@@ -1,5 +1,6 @@
 #pragma once
-// mouse line 69
+// mouse line 94 - 96
+// A - z line 55 - 80
 
 // true - false
 #define GLWIN_TRUE                   1

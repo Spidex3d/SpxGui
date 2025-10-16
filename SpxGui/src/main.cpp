@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "GLwin.h"
+#include "GLwinTime.h"
 #include "GLwinLOG.h"
 
 #include "../SpxGui.h"
@@ -63,8 +64,13 @@ int main() {
 	static std::string currentImage = "";   // empty = none shown
 
 	float r = 0.217, g = 0.207, b = 0.184;
+	// Timing set the fps
+	const double targetFPS = 60.0; // or 120.0
+	const double targetFrameTime = 1.0 / targetFPS; // in seconds
+
 	while (!GLwinWindowShouldClose(window)) {
-		
+		double frameStart = GLwinGetTime(); // new timer
+
 		GLwinPollEvents(); // New non-blocking event polling
 
 		double mx, my;
@@ -90,9 +96,6 @@ int main() {
 		
 		// ------------GUI Rendering code ------------
 		
-		
-		
-
 		if (showWin1) {
 			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
 
@@ -110,11 +113,11 @@ int main() {
 			
 
 			// testing Style changes
-			static char buf[32] = "Input Text";  // make a writable buffer
-			static char buf2[32] = "Input Text";  // make a writable buffer
-			SpxGui::InputText("Text Name", (char*)buf, sizeof(buf), 200, 30);
+			static char buf1[32] = "Input Text";  // make a writable buffer
+			SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
 						
-			SpxGui::InputText("Text Name_01", (char*)buf2, sizeof(buf2), 200, 30);
+			static char buf[1000] = "Input Text";  // make a writable buffer
+			SpxGui::MultiLineText("Text Name_01", (char*)buf, sizeof(buf), 200, 200);
 					
 
 			if (SpxGui::ButtonNew("Open New Window", 200, 30)) {
@@ -184,75 +187,36 @@ int main() {
 			float col[3] = { 0.8f, 0.2f, 0.3f };
 			if (SpxGui::ColorEdit3("Select Color", col)) {
 				//showColWin1 = true;
-			   showPopup = true;
+			  // showPopup = true;
 			}
 
 			SpxGui::End();
 		}
 
-		if (showPopup) {  // will draw a popup window
-			SpxGui::BeginColPopUp("Color Editor", &showPopup, 3); // move all of this to ColorEdit3
-			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "This Popup Uses Tables:");
-
-			static float hue = 0.0f;   // range 0..1
-			static float sat = 1.0f;   // range 0..1
-			static float val = 1.0f;   // range 0..1
-
-			float svSize = 120.0f;
-
-			// ------------------- Table for SV square and Hue slider -------------------
-			SpxGui::BeginTable("MyTable", 2);
-
-			// -------------------------------- SV Square ------------------------------
-			
-			SpxGui::HSVtoRGB(hue, sat, val, r, g, b);
-
-			if (SpxGui::ColorSVSquare(hue, sat, val, SpxGui::gCurrent->cursorX, SpxGui::gCurrent->cursorY, 120)) {
-				std::cout << "SV changed: S=" << sat << " V=" << val << "\n";
-			}		
-
-			SpxGui::TableNextColumn();
-			SpxGui::ColorBox("Light Color", &r, &g, &b);
-
-			SpxGui::ColorBox("Original", &r, &g, &b);
-
-			SpxGui::TableNextRow();
-			
-			SpxGui::gCurrent->cursorY += 85 + SpxGui::gStyle.ItemSpacingY; //120
-
-
-			// Hue slider (next to SV square)
-			if (SpxGui::HueSlider(hue, SpxGui::gCurrent->cursorX, SpxGui::gCurrent->cursorY, 120, 20)) {
-				std::cout << "Hue=" << hue << "\n";
-			}
-			SpxGui::gCurrent->cursorY += 20 + SpxGui::gStyle.ItemSpacingY;
-
-			float color_r[3] = { r, g, b };
-			SpxGui::Drag3FloatText(color_r);
-
-			float color_4r[4] = { r, g, b, 0.0f };
-			SpxGui::Drag4FloatText(color_4r);
-
-			SpxGui::ColorBox("Light Color", &r, &g, &b);
-
-			if (SpxGui::Button("Close Popup", 120, 30)) {
-				showPopup = false;
-			}
-
-			SpxGui::EndTable();
-
-			SpxGui::EndColPopUp();
-		}
+		
 
 		SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);
 
 		SpxGui::Render();  // will render all windows
 
+		
 		// ------------ End of GUI Rendering code ------------
 
 		// needs to be after all widgets are drawn in main as it clears the text buffer
 
 		GLwinSwapBuffers(window);
+
+		// Throttle to target FPS 60 or 120
+		double frameEnd = GLwinGetTime();
+		double elapsed = frameEnd - frameStart;
+		if (elapsed < targetFrameTime) {
+			double waitTime = targetFrameTime - elapsed;
+			DWORD ms = (DWORD)(waitTime * 1000.0);
+			if (ms > 0) Sleep(ms); // Sleep for the remaining time
+			// Spin-wait for extra precision (optional)
+			while ((GLwinGetTime() - frameStart) < targetFrameTime) {}
+			//std::cout << "FPS: " << targetFrameTime << std::endl;
+		}
 
 		GLenum err = glGetError();
 		if (err != GL_NO_ERROR) {

@@ -154,6 +154,11 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         float curWinY = 50;
         float curWinW = 300;
         float curWinH = 400;
+		// popup window pos & size
+        float curPopWinX = 50;
+        float curPopWinY = 50;
+        float curPopWinW = 300;
+        float curPopWinH = 300;
 
         // Widget layout state
         float cursorX = 0.0f;
@@ -218,6 +223,10 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         if (c == 8) { // backspace
             gInputChars.push_back((char)c);
         }
+		if (c == 13){ // enter key
+            // We only support ASCII in this UI right now
+            gInputChars.push_back('\n');
+        }
     }
 
     inline void AddKeyPress(int key) {
@@ -249,6 +258,11 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     inline void KeyCallback(int key, int action) {
         if (action == GLWIN_PRESS) {
             SpxGui::AddKeyPress(key);
+
+        if (key == GLWIN_RETURN) {
+            SpxGui::AddInputChar('\n');   // inject newline into text buffer
+
+        }
         }
     }
    
@@ -518,7 +532,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
 	// needs to be after all widgets are drawn in main
     inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
-       
+		g.frameCount++;
+
         for (auto& w : gWindows) { 
             w.mouseX = mouseX;
             w.mouseY = mouseY;
@@ -689,6 +704,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 	// Color Popup
     // Drawing functions for a popup-style window (no X button)
     inline void BeginColPopUp(const char* title, bool* p_open = nullptr, int SpxGuiWinID = 0) {
+   
         // find or create
         auto it = std::find_if(gWindows.begin(), gWindows.end(),
             [&](const SpxGuiWindow& w) { return w.SpxGuiWinID == SpxGuiWinID; });

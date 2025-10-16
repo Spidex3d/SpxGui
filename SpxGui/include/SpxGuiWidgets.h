@@ -668,10 +668,12 @@ namespace SpxGui
 		gCurrent->lastItemW = w;
 		gCurrent->lastItemH = h;
 
+
+
 		return clicked;
 	}
-		
-	inline bool ImageBox(const std::string texPath, float w, float h, const char* label = nullptr) {
+
+	inline bool ImageBox(const std::string& texPath, float w, float h, const char* label = nullptr) {
 		if (!gCurrent) return false;
 
 		float x = gCurrent->cursorX;
@@ -683,38 +685,83 @@ namespace SpxGui
 
 		Image img;
 		unsigned int texID = LoadTextuer(texPath, img);
-		
 
 		float r = 0.3f, gcol = 0.3f, b = 0.3f;
 		if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
 		if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
-		//DrawRect(x - 2, y - 2, w + 4, h + 4, r, gcol, b);
-		gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 2, y - 2, w + 4, h + 4, r, gcol, b));
 
-				
-		// Image
+		// border rect
+		gCurrent->drawList.emplace_back(DrawCmd::RECT, x - 2, y - 2, w + 4, h + 4, r, gcol, b);
+
+		// image
 		if (img.textureID != 0) {
-			//DrawImage(img.textureID, x, y, w, h);
-			gCurrent->drawList.push_back(DrawCmd(DrawCmd::IMAGE, texID, x, y, w, h));
-
+			gCurrent->drawList.emplace_back(DrawCmd::IMAGE, texID, x, y, w, h);
 		}
 
-		// Caption text (optional)
+		// caption
+		float totalH = h;
 		if (label) {
 			float textY = y + h + 4; // 4px gap under image
-			//DrawText(x, textY, label, 1, 1, 1);
-			
-			gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, textY, 1, 1, 1, label));
-			gCurrent->cursorY = textY + g.fontSize + gStyle.ItemSpacingY;
-			gCurrent->lastItemH = h +g.fontSize + 4; // total height including text
+			gCurrent->drawList.emplace_back(DrawCmd::TEXT, x, textY, 1, 1, 1, label);
+			totalH += g.fontSize + 4;
 		}
-		else {
-			gCurrent->cursorY += h + gStyle.ItemSpacingY;
-			gCurrent->lastItemH = h;
-		}
+
+		// advance cursor normally like other widgets
+		gCurrent->cursorY += totalH + gStyle.ItemSpacingY;
 		gCurrent->lastItemW = w;
+		gCurrent->lastItemH = totalH;
+
 		return clicked;
 	}
+
+		
+	//inline bool ImageBox(const std::string texPath, float w, float h, const char* label = nullptr) {
+	//	if (!gCurrent) return false;
+
+	//	float x = gCurrent->cursorX;
+	//	float y = gCurrent->cursorY;
+
+	//	bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+	//		gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+	//	bool clicked = (hover && gCurrent->mousePressed);
+
+	//	Image img;
+	//	unsigned int texID = LoadTextuer(texPath, img);
+	//	
+
+	//	float r = 0.3f, gcol = 0.3f, b = 0.3f;
+	//	if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
+	//	if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
+	//	//DrawRect(x - 2, y - 2, w + 4, h + 4, r, gcol, b);
+	//	gCurrent->drawList.push_back(DrawCmd(DrawCmd::RECT, x - 2, y - 2, w + 4, h + 4, r, gcol, b));
+
+	//			
+	//	// Image
+	//	if (img.textureID != 0) {
+	//		//DrawImage(img.textureID, x, y, w, h);
+	//		gCurrent->drawList.push_back(DrawCmd(DrawCmd::IMAGE, texID, x, y, w, h));
+
+	//	}
+
+	//	// Caption text (optional)
+	//	if (label) {
+	//		float textY = y + h + 4; // 4px gap under image
+	//		//DrawText(x, textY, label, 1, 1, 1);
+	//		
+	//		gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, textY, 1, 1, 1, label));
+	//		gCurrent->cursorY = textY + g.fontSize + gStyle.ItemSpacingY;
+	//		gCurrent->lastItemH = h +g.fontSize + 4; // total height including text
+	//	}
+	//	else {
+	//		gCurrent->cursorY += h + gStyle.ItemSpacingY;
+	//		gCurrent->lastItemH = h;
+	//	}
+	//	gCurrent->lastItemW = w;
+
+	//	
+
+	//	return clicked;
+	//}
 
 	// --------------------------------------- Color Picker Section ---------------------------------------
 
@@ -963,6 +1010,12 @@ namespace SpxGui
 			if (!openFlag) popupOpen[ctrlID] = false;
 			anyChange = true;
 		}
+
+		//gCurrent->cursorY += boxSize + gStyle.ItemSpacingY; // move cursor down for next item
+		//gCurrent->lastItemW = (boxX + boxSize) - x;
+		//gCurrent->lastItemH = boxSize;
+
+		
 
 		return anyChange || clicked;
 	}

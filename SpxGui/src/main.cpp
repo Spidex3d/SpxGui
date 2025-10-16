@@ -60,6 +60,7 @@ int main() {
 	bool showWin2 = false;
 	bool showPopup = false;
 	bool showColWin1 = false;
+	bool tabNew = true;
 	static SpxGui::Image bgImg;
 	static std::string currentImage = "";   // empty = none shown
 
@@ -96,49 +97,43 @@ int main() {
 		
 		// ------------GUI Rendering code ------------
 		
-		if (showWin1) {
-			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
+		//if (showWin1) {
+		//	SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
 
-			
-			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
-			SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
+		//	
+		//	static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
+		//	SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
 
-			if (SpxGui::ButtonNew("Add Light", 100, 30)) {
-				std::cout << "Add Light clicked\n";
-			}
-			if (SpxGui::Button("Open New Window", 200, 30)) {
-				std::cout << "New Window\n";
-				showWin2 = true;
-			}
-			
+		//	if (SpxGui::ButtonNew("Add Light", 100, 30)) {
+		//		std::cout << "Add Light clicked\n";
+		//	}
+		//	if (SpxGui::Button("Open New Window", 200, 30)) {
+		//		std::cout << "New Window\n";
+		//		showWin2 = true;
+		//	}
+		//	
 
-			// testing Style changes
-			static char buf1[32] = "Input Text";  // make a writable buffer
-			SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
-						
-			static char buf[1000] = "Input Text";  // make a writable buffer
-			SpxGui::MultiLineText("Text Name_01", (char*)buf, sizeof(buf), 200, 200);
-					
+		//	// testing Style changes
+		//	static char buf1[32] = "Input Text";  // make a writable buffer
+		//	SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
+		//				
+		//	static char buf[1000] = "Input Text";  // make a writable buffer
+		//	SpxGui::MultiLineText("Text Name_01", (char*)buf, sizeof(buf), 200, 200);
 
-			if (SpxGui::ButtonNew("Open New Window", 200, 30)) {
-				std::cout << "New Window\n";
-				showWin2 = true;
-			}
-			SpxGui::SeparatorText("Light Properties", 200);
-			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "Color Lable_1:");
-			SpxGui::SeparatorLine(200);
-			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "Color Lable_2:");
-			
-			float lightR = 1.0f, lightG = 1.0f, lightB = 0.0f;
-			// Color box test
-			if (SpxGui::ColorBoxLabel("Color box label", &lightR, &lightG, &lightB)) {
-				std::cout << "Clicked color box, current color = "
-					<< lightR << ", " << lightG << ", " << lightB << "\n";
-				
-			}
-			
-			SpxGui::End();
-		}
+		//	
+		//	SpxGui::SeparatorText("Light Properties", 200);
+		//	
+		//	
+		//	float lightR = 1.0f, lightG = 1.0f, lightB = 0.0f;
+		//	// Color box test
+		//	if (SpxGui::ColorBoxLabel("Color box label", &lightR, &lightG, &lightB)) {
+		//		std::cout << "Clicked color box, current color = "
+		//			<< lightR << ", " << lightG << ", " << lightB << "\n";
+		//		
+		//	}
+		//	
+		//	SpxGui::End();
+		//}
 		if (showWin2) {
 			SpxGui::Begin("Demo Editor_02", &showWin2, 2);   // will draw rect
 			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
@@ -175,6 +170,8 @@ int main() {
 				std::cout << "GitHub clicked\n";
 				currentImage = "../SpxGui/Textures/github.jpg";
 			}
+			
+			SpxGui::SeparatorLine(200);
 
 			// now always draw the currently selected image
 			if (!currentImage.empty()) {
@@ -190,6 +187,29 @@ int main() {
 			  // showPopup = true;
 			}
 
+			SpxGui::ColoredLabel(1.0f, 1.0f, 0.0f, "Color Lable_2:");
+
+			SpxGui::End();
+		}
+		// ------------------------------------------------ Tab test ------------------------------------------------
+		if (tabNew) {
+			SpxGui::Begin("Tabs Editor", &tabNew, 2);
+
+			SpxGui::BeginTabBar("MainTabs");
+			if (SpxGui::BeginTabItem("Scene")) {
+				SpxGui::Button("Add Object", 120, 30);
+				SpxGui::EndTabItem();
+			}
+			if (SpxGui::BeginTabItem("Lighting")) {
+				SpxGui::ColorBox("Sun Color", &r, &g, &b);
+				SpxGui::EndTabItem();
+			}
+			if (SpxGui::BeginTabItem("Settings")) {
+				static char buft[32] = "Input Text";
+				SpxGui::InputText("Project Name", buft, sizeof(buft), 200, 30);
+				SpxGui::EndTabItem();
+			}
+			SpxGui::EndTabBar();
 			SpxGui::End();
 		}
 

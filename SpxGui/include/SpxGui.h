@@ -73,7 +73,7 @@ inline int caretIndex = 0;   // caretIndex cursor position in the active text bu
 inline char* activeBuf = nullptr; // later for multiple text boxes
 
 
-	// Struct for storing style settings
+	// ---------------------------------- Struct for storing style settings -------------------------------------------------
     struct Style {
         float WindowRounding = 0.0f;
         float WindowBgR = 0.15f;
@@ -94,7 +94,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         float WindowPaddingY = 28.0f; // leave room for header       
 		
     };
-	// struct for storing draw commands as we move to Retained Mode
+	// ----------------------------------- struct for storing draw commands as we move to Retained Mode -----------------------------------
     struct DrawCmd {
         enum Type { RECT, TEXT, IMAGE, CARET } type;
         float x, y, w, h;
@@ -130,6 +130,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         }
         
     };
+    // ---------------------------------- Struct for storing Table settings -------------------------------------------------
 
     struct TableState {
         int columnCount = 0;
@@ -139,8 +140,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         float colWidth = 0.0f;
         bool active = false;
     };
-
-	//struct for storage for the main gui window
+    // jump to 854
+	//----------------------------------- struct for storage for the main gui window -----------------------------------
     struct SpxGuiWindow {
         int SpxGuiWinID = 0;       // ID for multiple windows
         std::string title;
@@ -182,7 +183,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 		TableState table; // for tables
 		
     };
-    // global-only things into a single ContextAddInputChar
+	// ---------------------------------- global-only things into a single ContextAddInputChar struct -------------------------------------------------
     struct Context {
         int screenW = 800;
         int screenH = 600;
@@ -204,6 +205,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 	inline int gActiveWinID = -1; // later for multiple windows focus
     Style style;
 
+    // ---------------------------------- Struct for storing Image settings -------------------------------------------------
+
     struct Image {
         GLuint textureID = 0;
         int width = 0;
@@ -211,6 +214,18 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         int ColIndex = 0; // later for multiple colors in one texture
         GLenum i_format; // later for different image formats
     };
+
+    // ---------------------------------- Struct for storing Tabs settings -------------------------------------------------
+    struct SpxGuiTabBar {
+		std::string title;
+		std::vector<std::string> tabs;
+		int activeTabIndex = 0;
+		float startX = 0, startY = 0;
+		float height = 0;
+		bool inTabBar = false;
+    };
+    inline SpxGuiTabBar gTabBar; // only one at a time for now
+    // jump to 801
 
 	// ------------------------------------------------- Text Input  ----------------------------------------------
    
@@ -781,6 +796,59 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         if (!gCurrent) return;
         gCurrent->inWindow = false;
         gCurrent = nullptr;
+    }
+
+	// ----------------------------------------------------------- Tabs -----------------------------------------------------------
+
+    inline void BeginTabBar(const char* title) {
+        if (!gCurrent) return;
+        gTabBar.title = title;
+        gTabBar.tabs.clear();
+        gTabBar.startX = gCurrent->cursorX;
+        gTabBar.startY = gCurrent->cursorY;
+        gTabBar.height = g.fontSize + gStyle.ItemSpacingY * 2;
+        gTabBar.inTabBar = true;
+
+        // move cursor below tabs
+        gCurrent->cursorY += gTabBar.height + gStyle.ItemSpacingY;
+    }
+
+    inline void EndTabBar() {
+        gTabBar.inTabBar = false;
+    }
+
+    inline bool BeginTabItem(const char* label) {
+        if (!gCurrent || !gTabBar.inTabBar) return false;
+
+        int idx = (int)gTabBar.tabs.size();
+        gTabBar.tabs.push_back(label);
+
+        float tabW = 100.0f; // fixed width for now
+        float x = gTabBar.startX + idx * (tabW + 2);
+        float y = gTabBar.startY;
+
+        bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + tabW &&
+            gCurrent->mouseY >= y && gCurrent->mouseY <= y + gTabBar.height);
+        bool clicked = (hover && gCurrent->mousePressed);
+
+        if (clicked) {
+            gTabBar.activeTabIndex = idx;
+        }
+
+        // style
+        float r = (idx == gTabBar.activeTabIndex) ? 0.3f : 0.2f;
+        float gcol = (idx == gTabBar.activeTabIndex) ? 0.4f : 0.2f;
+        float b = (idx == gTabBar.activeTabIndex) ? 0.6f : 0.2f;
+
+        gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, tabW, gTabBar.height, r, gcol, b);
+        gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 8, y + g.fontSize * 0.2f, 1, 1, 1, label);
+
+        // return true if this tab is the active one
+        return (idx == gTabBar.activeTabIndex);
+    }
+
+    inline void EndTabItem() {
+        // Nothing yet, just symmetry
     }
 
 	// ------------------------------------------------------------ Tables ------------------------------------------------------------

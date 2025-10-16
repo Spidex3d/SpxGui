@@ -5,6 +5,7 @@
 
 #include "GLwin.h"
 #include "GLwinTime.h"
+#include "GLwinDialog.h"
 #include "GLwinLOG.h"
 
 #include "../SpxGui.h"
@@ -16,7 +17,8 @@ int main() {
 	GLWIN_LOG_INFO("This is an info message.");
 	
 	//GLWIN_window* window = GLwin_CreateWindow(800, 600, L"GLwin! with Modern OpenGL and SpxGui");
-	GLWIN_window* window = GLwin_CreateWindow(1200, 800, L"GLwin! with Modern OpenGL and SpxGui");
+	//GLWIN_window* window = GLwin_CreateWindow(1200, 800, L"GLwin! with Modern OpenGL and SpxGui");
+	GLWIN_window* window = GLwin_CreateWindow(1760, 990, L"GLwin! with Modern OpenGL and SpxGui");
 
 	if (!window) {
 		std::cerr << "Failed to create GLwin window!" << std::endl;
@@ -47,7 +49,7 @@ int main() {
 	glViewport(0, 0, fbw, fbh);
 	SpxGui::Init();
 	// tell SpxGui about the real framebuffer size
-	SpxGui::SetScreenSize(fbw, fbh);
+	//SpxGui::SetScreenSize(fbw, fbh);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -60,7 +62,7 @@ int main() {
 	bool showWin2 = false;
 	bool showPopup = false;
 	bool showColWin1 = false;
-	bool tabNew = true;
+	bool tabNew = false;
 	static SpxGui::Image bgImg;
 	static std::string currentImage = "";   // empty = none shown
 
@@ -68,7 +70,7 @@ int main() {
 	// Timing set the fps
 	const double targetFPS = 60.0; // or 120.0
 	const double targetFrameTime = 1.0 / targetFPS; // in seconds
-
+	SpxGui::SetScreenSize(fbw, fbh);
 	while (!GLwinWindowShouldClose(window)) {
 		double frameStart = GLwinGetTime(); // new timer
 
@@ -97,43 +99,51 @@ int main() {
 		
 		// ------------GUI Rendering code ------------
 		
-		//if (showWin1) {
-		//	SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
+		if (showWin1) {
+			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
 
-		//	
-		//	static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
-		//	SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
+			
+			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
+			SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
 
-		//	if (SpxGui::ButtonNew("Add Light", 100, 30)) {
-		//		std::cout << "Add Light clicked\n";
-		//	}
-		//	if (SpxGui::Button("Open New Window", 200, 30)) {
-		//		std::cout << "New Window\n";
-		//		showWin2 = true;
-		//	}
-		//	
+			if (SpxGui::ButtonNew("Add Tabs", 100, 30)) {
+				tabNew = true;
+			}
+			if (SpxGui::ButtonNew("Save Dialog", 100, 30)) {
+				// open file dialog
+				std::string filename = GLwinSaveDialog();
+			}
+			if (SpxGui::ButtonNew("Open Dialog", 100, 30)) {
+				// open file dialog
+				std::string filename = GLwinOpenDialog();
+			}
+			if (SpxGui::Button("Open New Window", 200, 30)) {
+				std::cout << "New Window\n";
+				showWin2 = true;
+			}
+			
 
-		//	// testing Style changes
-		//	static char buf1[32] = "Input Text";  // make a writable buffer
-		//	SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
-		//				
-		//	static char buf[1000] = "Input Text";  // make a writable buffer
-		//	SpxGui::MultiLineText("Text Name_01", (char*)buf, sizeof(buf), 200, 200);
+			// testing Style changes
+			static char buf1[32] = "Input Text";  // make a writable buffer
+			SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
+						
+			static char buf[1000] = "Input Text";  // make a writable buffer
+			SpxGui::MultiLineText("Text Name_01", (char*)buf, sizeof(buf), 200, 200);
 
-		//	
-		//	SpxGui::SeparatorText("Light Properties", 200);
-		//	
-		//	
-		//	float lightR = 1.0f, lightG = 1.0f, lightB = 0.0f;
-		//	// Color box test
-		//	if (SpxGui::ColorBoxLabel("Color box label", &lightR, &lightG, &lightB)) {
-		//		std::cout << "Clicked color box, current color = "
-		//			<< lightR << ", " << lightG << ", " << lightB << "\n";
-		//		
-		//	}
-		//	
-		//	SpxGui::End();
-		//}
+			
+			SpxGui::SeparatorText("Light Properties", 200);
+			
+			
+			float lightR = 1.0f, lightG = 1.0f, lightB = 0.0f;
+			// Color box test
+			if (SpxGui::ColorBoxLabel("Color box label", &lightR, &lightG, &lightB)) {
+				std::cout << "Clicked color box, current color = "
+					<< lightR << ", " << lightG << ", " << lightB << "\n";
+				
+			}
+			
+			SpxGui::End();
+		}
 		if (showWin2) {
 			SpxGui::Begin("Demo Editor_02", &showWin2, 2);   // will draw rect
 			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
@@ -193,11 +203,12 @@ int main() {
 		}
 		// ------------------------------------------------ Tab test ------------------------------------------------
 		if (tabNew) {
-			SpxGui::Begin("Tabs Editor", &tabNew, 2);
+			SpxGui::Begin("Tabs Editor", &tabNew, 3);
 
 			SpxGui::BeginTabBar("MainTabs");
 			if (SpxGui::BeginTabItem("Scene")) {
-				SpxGui::Button("Add Object", 120, 30);
+				static char tabbuf[1000] = "Input Text";  // make a writable buffer
+				SpxGui::MultiLineText("Text Name_01", (char*)tabbuf, sizeof(tabbuf), 200, 200);
 				SpxGui::EndTabItem();
 			}
 			if (SpxGui::BeginTabItem("Lighting")) {
@@ -210,6 +221,7 @@ int main() {
 				SpxGui::EndTabItem();
 			}
 			SpxGui::EndTabBar();
+
 			SpxGui::End();
 		}
 

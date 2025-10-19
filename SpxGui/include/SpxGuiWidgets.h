@@ -4,6 +4,9 @@
 
 namespace SpxGui
 {
+	
+
+
 	inline bool ButtonNew(const char* label, float w, float h) {
 		if (!gCurrent) return false;
 
@@ -887,7 +890,5 @@ namespace SpxGui
 		// Reuse ColorEdit3 and add an alpha slider
 		// Placeholder for future implementation
 	}
-	
-	// --------------------------------------- Color Picker Section end ---------------------------------------
 
 } // namespace MyNamespace

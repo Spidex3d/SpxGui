@@ -139,11 +139,15 @@
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Helpers.h" />
     <ClInclude Include="include\SpxGui.h" />
     <ClInclude Include="include\SpxGuiWidgets.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="vendors\GLwin\lib\GLwin.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test.spl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

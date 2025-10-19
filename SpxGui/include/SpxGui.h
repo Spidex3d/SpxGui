@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include "Helpers.h"
 #include "../vendors/GLwin/include/GLwin.h"
 #include "../vendors/GLwin/include/GLwinDefs.h"
 #include "stb/stb_image.h" // Include stb_image.h for image loading
@@ -73,9 +74,16 @@ inline int caretIndex = 0;   // caretIndex cursor position in the active text bu
 inline char* activeBuf = nullptr; // later for multiple text boxes
 
 
+
+
 	// ---------------------------------- Struct for storing style settings -------------------------------------------------
     struct Style {
         float WindowRounding = 0.0f;
+        // menu bar
+		float MenuBarBgR = 0.20f;
+		float MenuBarBgG = 0.20f;
+		float MenuBarBgB = 0.55f;   
+
         float WindowBgR = 0.15f;
         float WindowBgG = 0.15f;
         float WindowBgB = 0.17f;
@@ -151,8 +159,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         unsigned int backgroundTex = 0; // 0 = none
 
         // Window position & size
-        float curWinX = 50;
-        float curWinY = 50;
+        float curWinX = 100;
+        float curWinY = 100;
         float curWinW = 300;
         float curWinH = 400;
 		// popup window pos & size
@@ -203,6 +211,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 	inline std::vector<SpxGuiWindow> gWindows; // later for multiple windows
 	inline SpxGuiWindow* gCurrent = nullptr; // later for multiple windows
 	inline int gActiveWinID = -1; // later for multiple windows focus
+
+    
     Style style;
 
     // ---------------------------------- Struct for storing Image settings -------------------------------------------------
@@ -226,6 +236,169 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     };
     inline SpxGuiTabBar gTabBar; // only one at a time for now
     // jump to 801
+
+    //  ------------------------------------------------ New Menu Bar -----------------------------------
+    
+    //inline std::string gOpenMenu = ""; // "" means no menu open
+    // 
+    // --- Globals ---
+    inline int gScreenW = 0;
+    inline int gScreenH = 0;
+
+    struct MenuItem {
+        std::string label;
+        bool open = false;
+        std::vector<std::string> subItems;
+    };
+
+    inline float gMouseX = 0.0f;
+    inline float gMouseY = 0.0f;
+    inline bool gMouseDown = false;
+    inline bool gMousePressed = false;
+    inline bool gMouseReleased = false;
+
+	// Title Bar dimensions
+    inline float gMenuBarHeight = 65.0f;   // toolbar/menu height
+	inline float gTitleButton = 30.0f;      // height of title bar buttons
+	inline float gIconSize = 30.0f;  // size of icon in title bar
+
+    // Tool bar
+
+    // Mouse state (fed from main.cpp every frame)
+    inline bool down = false;     // true while button is held
+    inline bool pressed = false;  // true only on the frame mouse went down
+    inline bool released = false; // true only on the frame mouse released
+    inline int gMouseGlobalX = 0; // updated each frame via GLwinGetGlobalCursorPos
+    inline int gMouseGlobalY = 0;
+
+	inline int gClientScreenX = 0; // updated each frame via GLwinGetClientScreenOrigin
+	inline int gClientScreenY = 0; // updated each frame via GLwinGetClientScreenOrigin
+
+  
+
+    inline GLWIN_window* gMainWindow = nullptr;  // set from main
+
+    // Drag state
+    inline bool gMenuBarDragging = false;
+    inline int dragStartMouseX = 0;
+    inline int dragStartMouseY = 0;
+    inline int dragStartWinX = 0;
+    inline int dragStartWinY = 0;
+
+    inline void RenderMenuBar() {
+        // Draw the bar at the top of the CLIENT area
+        // (Your DrawRect uses client coords; that's fine for visuals.)
+        DrawRect(0, 0, gScreenW, gMenuBarHeight, 0.15f, 0.15f, 0.17f);
+        DrawRect(0, gMenuBarHeight - 1, gScreenW, 1, 0.05f, 0.05f, 0.05f);
+
+        // --- Close button ---
+        float btnSize = gTitleButton - 8.0f; // padding from top/bottom
+        float btnY = 4.0f;
+
+        float cr = 0.15f, cg = 0.15f, cb = 0.17f;
+        float closeX = gScreenW - btnSize - 4.0f; // align right
+        bool closeHover = (gMouseX >= closeX && gMouseX <= closeX + btnSize &&
+            gMouseY >= btnY && gMouseY <= btnY + btnSize);
+        if (closeHover) { cr = 0.22f; cg = 0.22f; cb = 0.24f; } // brighter on hover
+        DrawRect(closeX, btnY, btnSize, btnSize, cr, cg, cb);
+        DrawText(closeX + btnSize * 0.3f, btnY + 2, "X", 1.0f, 1.0f, 1.0f);
+
+		if (closeHover && pressed) {
+            GLwinWindowShouldClose(gMainWindow, 1);
+		}
+        // maximize / restore
+        float maxX = closeX - btnSize - 4.0f;
+        bool maxHover = (gMouseX >= maxX && gMouseX <= maxX + btnSize &&
+            gMouseY >= btnY && gMouseY <= btnY + btnSize);
+        if (maxHover) { cr = 0.22f; cg = 0.22f; cb = 0.24f; } // brighter on hover
+        DrawRect(maxX, btnY, btnSize, btnSize, cr, cg, cb);
+        DrawText(maxX + btnSize * 0.25f, btnY + 2, "[ ]", 1.0f, 1.0f, 1.0f);
+
+        if (maxHover && gMousePressed) {
+            // Toggle maximize / restore
+            static bool maximized = false;
+            if (maximized) {
+                GLwinRestoreWindow(gMainWindow); // you’ll need to implement this
+            }
+            else {
+                GLwinMaximizeWindow(gMainWindow); // you’ll need to implement this
+            }
+            maximized = !maximized;
+        }
+
+        // Minimize button (leftmost)
+        float minX = maxX - btnSize - 4.0f;
+        bool minHover = (gMouseX >= minX && gMouseX <= minX + btnSize &&
+            gMouseY >= btnY && gMouseY <= btnY + btnSize);
+        if (minHover) { cr = 0.22f; cg = 0.22f; cb = 0.24f; } // brighter on hover
+        DrawRect(minX, btnY, btnSize, btnSize, cr, cg, cb);
+        DrawText(minX + btnSize * 0.3f, btnY + 2, "_", 1, 1, 1);
+
+        if (minHover && gMousePressed) {
+            GLwinMinimizeWindow(gMainWindow); // you’ll need to implement this
+        }
+       
+
+
+        // ------ Hover check in SCREEN coordinates over the actual client area ------
+        // Client origin in screen coords was updated in main: gClientScreenX/Y
+        int barLeft = gClientScreenX;
+        int barTop = gClientScreenY;
+        int barRight = gClientScreenX + gScreenW;       // use framebuffer/client width
+        int barBottom = gClientScreenY + (int)gMenuBarHeight;
+
+        bool hover = (gMouseGlobalX >= barLeft && gMouseGlobalX <= barRight &&
+            gMouseGlobalY >= barTop && gMouseGlobalY <= barBottom);
+
+        // ------ Drag start ------
+        if (hover && pressed && !gMenuBarDragging) {
+            gMenuBarDragging = true;
+
+            dragStartMouseX = gMouseGlobalX;
+            dragStartMouseY = gMouseGlobalY;
+
+            GLwinGetWindowPos(gMainWindow, &dragStartWinX, &dragStartWinY);
+
+            // std::cout << ">>> Drag START: win=(" << dragStartWinX << "," << dragStartWinY
+            //           << ") mouse=(" << dragStartMouseX << "," << dragStartMouseY << ")\n";
+        }
+
+        // ------ Drag end ------
+        if (released) {
+            gMenuBarDragging = false;
+        }
+
+        // ------ Drag move ------
+        if (gMenuBarDragging && down) {
+            int deltaX = gMouseGlobalX - dragStartMouseX;
+            int deltaY = gMouseGlobalY - dragStartMouseY;
+
+            int newX = dragStartWinX + deltaX;
+            int newY = dragStartWinY + deltaY;
+
+            
+            // Replace the problematic line with the following:
+			//newX = (std::max)(newX, 0); // Use parentheses to avoid macro conflicts
+           // newY = (std::max)(newY, 0); // Use parentheses to avoid macro conflicts
+
+            newX = Clamp(newX, 0, gScreenW);
+            newY = Clamp(newY, 0, gScreenH);
+
+            GLwinSetWindowPos(gMainWindow, newX, newY);
+
+            // std::cout << ">>> Drag MOVE: new=(" << newX << "," << newY
+            //           << ") delta=(" << deltaX << "," << deltaY << ")\n";
+        }
+    }
+
+
+    
+    inline void UpdateScreenSize(int w, int h) {
+        gScreenW = static_cast<float>(w);
+        gScreenH = static_cast<float>(h);
+    }
+
+
 
 	// ------------------------------------------------- Text Input  ----------------------------------------------
    
@@ -281,9 +454,6 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         }
     }
    
-
-
-
 	// ----------------------------------------------------------- Test Area -----------------------------------------------------------
 
 	// Use this for X and Y coordinates
@@ -333,7 +503,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         return s;
     }
 	// ----------------------------------------------------- Font & Text Rendering -----------------------------------------------------
-   // inline Context g;
+      
+
     inline Context g;
     float CalcTextWidthN(const char* text, int count) {
         float xpos = 0, ypos = 0;
@@ -345,6 +516,10 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         }
         return xpos;
     }
+
+    inline float CalcTextWidth(const char* text) {
+       return CalcTextWidthN(text, (int)strlen(text));
+   }
 
     inline bool LoadDefaultFont(const char* path, float size) {
         FILE* f = nullptr;
@@ -543,11 +718,23 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
 
-    } 
+    }
+    void Init(int screenW, int screenH)
+    {
+    }
+
 
 	// needs to be after all widgets are drawn in main
-    inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
+    //inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
+    inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released, int fbw, int fbh) {
 		g.frameCount++;
+
+        gMouseX = mouseX;
+		gMouseY = mouseY;
+		gMouseDown = down;
+		gMousePressed = pressed;
+		gMouseReleased = released;
+       
 
         for (auto& w : gWindows) { 
             w.mouseX = mouseX;
@@ -626,6 +813,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             gCurrent->curWinX = gCurrent->mouseX - gCurrent->dragOffsetX;
             gCurrent->curWinY = gCurrent->mouseY - gCurrent->dragOffsetY;
         }
+       // gCurrent->cursorY = gCurrent->curWinY + gStyle.WindowPaddingY + gMenuBarHeight;
+
     }
 
 

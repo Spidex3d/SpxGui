@@ -15,15 +15,23 @@
 int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
 	GLWIN_LOG_INFO("This is an info message.");
+	// for use with Menu bar position
+	//GLWIN_window* gMainWindow = nullptr;
+
+	
 	
 	//GLWIN_window* window = GLwin_CreateWindow(800, 600, L"GLwin! with Modern OpenGL and SpxGui");
-	//GLWIN_window* window = GLwin_CreateWindow(1200, 800, L"GLwin! with Modern OpenGL and SpxGui");
-	GLWIN_window* window = GLwin_CreateWindow(1760, 990, L"GLwin! with Modern OpenGL and SpxGui");
+	GLWIN_window* window = GLwin_CreateWindow(1200, 800, L"GLwin! with Modern OpenGL and SpxGui");
+	//GLWIN_window* window = GLwin_CreateWindow(1760, 990, L"GLwin! with Modern OpenGL and SpxGui");
 
 	if (!window) {
 		std::cerr << "Failed to create GLwin window!" << std::endl;
 		return -1;
 	}
+
+	// Toggle custom title bar on/off
+	GLwinEnableCustomTitleBar(window, GLWIN_TRUE);  // Enable custom title bar - ON
+	//GLwinEnableCustomTitleBar(window, GLWIN_FALSE); // Restore Windows default - OFF
 
 	GLwinMakeContextCurrent(window);
 
@@ -31,6 +39,13 @@ int main() {
 	GLwinGetFramebufferSize(window, &fbw, &fbh);
 	std::cout << "Framebuffer size: " << fbw << " x " << fbh << std::endl;
 	
+	int w, h;
+	SpxGui::UpdateScreenSize(fbw, fbh);
+
+	// for use with Menu bar position
+	//gMainWindow = window; // store pointer to main window for SpxGui
+	SpxGui::gMainWindow = window;
+
 	// Set character input callback and key callback for SpxGui
 	GLwinSetCharCallback(window, SpxGui::CharCallback);
 	GLwinSetKeyCallback(window, SpxGui::KeyCallback);
@@ -48,8 +63,13 @@ int main() {
 
 	glViewport(0, 0, fbw, fbh);
 	SpxGui::Init();
-	// tell SpxGui about the real framebuffer size
-	//SpxGui::SetScreenSize(fbw, fbh);
+	
+	if (SpxGui::gMainWindow)
+		std::cout << "gMainWindow set correctly\n";
+	else
+		std::cout << "gMainWindow is NULL!\n";
+
+	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -57,6 +77,9 @@ int main() {
 
 	glGetString(GL_VERSION);
 	std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+
+	// ----------------- Setup Menus -----------------
+	
 
 	bool showWin1 = true;
 	bool showWin2 = false;
@@ -70,39 +93,59 @@ int main() {
 	// Timing set the fps
 	const double targetFPS = 60.0; // or 120.0
 	const double targetFrameTime = 1.0 / targetFPS; // in seconds
+
 	SpxGui::SetScreenSize(fbw, fbh);
-	while (!GLwinWindowShouldClose(window)) {
+
+	while (!GLwinWindowShouldClose(window, 0)) {
 		double frameStart = GLwinGetTime(); // new timer
 
 		GLwinPollEvents(); // New non-blocking event polling
+		// Client coords (relative to your GL window)
+		double cx, cy;
+		GLwinGetCursorPos(window, &cx, &cy);
 
-		double mx, my;
-		GLwinGetCursorPos(window, &mx, &my);
-		bool down = GLwinGetMouseButton(window, GLWIN_MOUSE_BUTTON_LEFT) == GLWIN_PRESS;
+		// Screen coords (absolute)
+		int gx, gy;
+		GLwinGetGlobalCursorPos(window, &gx, &gy);
+		SpxGui::gMouseGlobalX = gx;
+		SpxGui::gMouseGlobalY = gy;
+
+		int cox, coy;
+		GLwinGetClientScreenOrigin(window, &cox, &coy);
+		SpxGui::gClientScreenX = cox;
+		SpxGui::gClientScreenY = coy;
+
+
+		bool downNow = GLwinGetMouseButton(window, GLWIN_MOUSE_BUTTON_LEFT) == GLWIN_PRESS;
 
 		static bool prevDown = false;
-		bool pressed = (down && !prevDown);
-		bool released = (!down && prevDown);
-		prevDown = down;
+		SpxGui::pressed = (downNow && !prevDown);
+		SpxGui::released = (!downNow && prevDown);
+		SpxGui::down = downNow;
+		prevDown = downNow;
 
-		//SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);
+		if (SpxGui::gCurrent) {
+			SpxGui::gCurrent->mouseX = (float)cx;
+			SpxGui::gCurrent->mouseY = (float)cy;
+		}
 
+		// pass mouse state to SpxGui
 		if (GLwinGetKey(window, GLWIN_ESCAPE) == GLWIN_PRESS) { // ESC key
 			std::wcout << L"Escape key pressed window is closing!" << std::endl;
-			break; // ESC key
+			//break; // ESC key
+			GLwinWindowShouldClose(window, 1);
 		}
-		
-		
+
 		//glClearColor(0.17f, 0.17f, 0.18f, 1.0f);
 		glClearColor(r, g, b, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		
+
 		// ------------GUI Rendering code ------------
-		
+				
 		if (showWin1) {
 			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
 
-			
+			// load background texture once
 			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
 			SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
 
@@ -112,17 +155,22 @@ int main() {
 			if (SpxGui::ButtonNew("Save Dialog", 100, 30)) {
 				// open file dialog
 				std::string filename = GLwinSaveDialog();
+				if (!filename.empty()) {
+					// Save to this file...
+				}
 			}
 			if (SpxGui::ButtonNew("Open Dialog", 100, 30)) {
 				// open file dialog
 				std::string filename = GLwinOpenDialog();
+				if (!filename.empty()) {
+					// Open this file...
+				}
 			}
 			if (SpxGui::Button("Open New Window", 200, 30)) {
 				std::cout << "New Window\n";
 				showWin2 = true;
 			}
 			
-
 			// testing Style changes
 			static char buf1[32] = "Input Text";  // make a writable buffer
 			SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
@@ -225,16 +273,15 @@ int main() {
 			SpxGui::End();
 		}
 
-		
+		SpxGui::NewFrame((float)cx, (float)cy, downNow, SpxGui::pressed, SpxGui::released, fbw, fbh);
 
-		SpxGui::NewFrame((float)mx, (float)my, down, pressed, released);
+		// Draw the top menu bar
+		SpxGui::RenderMenuBar(); // works with your real screen width
 
 		SpxGui::Render();  // will render all windows
 
 		
 		// ------------ End of GUI Rendering code ------------
-
-		// needs to be after all widgets are drawn in main as it clears the text buffer
 
 		GLwinSwapBuffers(window);
 

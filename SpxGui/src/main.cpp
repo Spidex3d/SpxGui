@@ -15,10 +15,6 @@
 int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
 	GLWIN_LOG_INFO("This is an info message.");
-	// for use with Menu bar position
-	//GLWIN_window* gMainWindow = nullptr;
-
-	
 	
 	//GLWIN_window* window = GLwin_CreateWindow(800, 600, L"GLwin! with Modern OpenGL and SpxGui");
 	GLWIN_window* window = GLwin_CreateWindow(1200, 800, L"GLwin! with Modern OpenGL and SpxGui");
@@ -35,12 +31,12 @@ int main() {
 
 	GLwinMakeContextCurrent(window);
 
-	int fbw, fbh;
+	/*int fbw, fbh;
 	GLwinGetFramebufferSize(window, &fbw, &fbh);
-	std::cout << "Framebuffer size: " << fbw << " x " << fbh << std::endl;
+	std::cout << "Framebuffer size: " << fbw << " x " << fbh << std::endl;*/
 	
-	int w, h;
-	SpxGui::UpdateScreenSize(fbw, fbh);
+	/*int w, h;
+	SpxGui::UpdateScreenSize(fbw, fbh);*/
 
 	// for use with Menu bar position
 	//gMainWindow = window; // store pointer to main window for SpxGui
@@ -61,15 +57,13 @@ int main() {
 		GLWIN_LOG_INFO("GLAD initialized successfully.");
 	}
 
-	glViewport(0, 0, fbw, fbh);
-	SpxGui::Init();
+	//glViewport(0, 0, fbw, fbh);
+	SpxGui::Init();  // sets up shaders 
 	
 	if (SpxGui::gMainWindow)
 		std::cout << "gMainWindow set correctly\n";
 	else
 		std::cout << "gMainWindow is NULL!\n";
-
-	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -78,9 +72,7 @@ int main() {
 	glGetString(GL_VERSION);
 	std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
 
-	// ----------------- Setup Menus -----------------
-	
-
+	// Gui state variables
 	bool showWin1 = true;
 	bool showWin2 = false;
 	bool showPopup = false;
@@ -94,27 +86,30 @@ int main() {
 	const double targetFPS = 60.0; // or 120.0
 	const double targetFrameTime = 1.0 / targetFPS; // in seconds
 
-	SpxGui::SetScreenSize(fbw, fbh);
+	//SpxGui::SetScreenSize(fbw, fbh);
 
 	while (!GLwinWindowShouldClose(window, 0)) {
 		double frameStart = GLwinGetTime(); // new timer
 
 		GLwinPollEvents(); // New non-blocking event polling
+
 		// Client coords (relative to your GL window)
 		double cx, cy;
 		GLwinGetCursorPos(window, &cx, &cy);
 
-		// Screen coords (absolute)
-		int gx, gy;
-		GLwinGetGlobalCursorPos(window, &gx, &gy);
-		SpxGui::gMouseGlobalX = gx;
-		SpxGui::gMouseGlobalY = gy;
+		// ------------------------- Handle resizing ---------------------------
+		int fbw, fbh;
+		GLwinGetFramebufferSize(window, &fbw, &fbh);
+		//std::cout << "Framebuffer size: " << fbw << " x " << fbh << std::endl;
+		int w, h;
+		SpxGui::UpdateScreenSize(fbw, fbh);
 
-		int cox, coy;
-		GLwinGetClientScreenOrigin(window, &cox, &coy);
-		SpxGui::gClientScreenX = cox;
-		SpxGui::gClientScreenY = coy;
+		glViewport(0, 0, fbw, fbh);
+		SpxGui::SetScreenSize(fbw, fbh);
+		// ------------------------- Handle resizing End -------------------------
 
+						
+		SpxGui::MenuInit(); // update mouse pos for menu bar
 
 		bool downNow = GLwinGetMouseButton(window, GLWIN_MOUSE_BUTTON_LEFT) == GLWIN_PRESS;
 
@@ -273,7 +268,11 @@ int main() {
 			SpxGui::End();
 		}
 
+		
+
 		SpxGui::NewFrame((float)cx, (float)cy, downNow, SpxGui::pressed, SpxGui::released, fbw, fbh);
+		//SpxGui::NewFrame(downNow, SpxGui::pressed, SpxGui::released, fbw, fbh);
+		//SpxGui::NewFrame(SpxGui::gMouseDown, SpxGui::gMousePressed,	SpxGui::gMouseReleased, fbw, fbh);
 
 		// Draw the top menu bar
 		SpxGui::RenderMenuBar(); // works with your real screen width

@@ -66,15 +66,14 @@ namespace SpxGui { // I have never used namespaces before
 inline void DrawRect(float x, float y, float w, float h, float r, float g, float b);
 inline void DrawText(float x, float y, const char* txt, float r, float gcol, float b);
 inline void Init(int screenW, int screenH);
+inline unsigned int LoadTextuer(const std::string& filename, struct Image& img);
+inline void DrawImage(unsigned int texID, float x, float y, float w, float h);
   
 // Text Input related globals
 inline std::string gInputChars;
 inline uintptr_t activeTextID = 0; // ID of the active text box focus
 inline int caretIndex = 0;   // caretIndex cursor position in the active text buffer (caret = carage return)
 inline char* activeBuf = nullptr; // later for multiple text boxes
-
-
-
 
 	// ---------------------------------- Struct for storing style settings -------------------------------------------------
     struct Style {
@@ -258,9 +257,13 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     inline bool gMouseReleased = false;
 
 	// Title Bar dimensions
-    inline float gMenuBarHeight = 65.0f;   // toolbar/menu height
+    inline float gMenuBarHeight = 65.0f;    // toolbar/menu height
 	inline float gTitleButton = 30.0f;      // height of title bar buttons
-	inline float gIconSize = 30.0f;  // size of icon in title bar
+	inline float gIconSizeX = 60.0f;         // size of icon in title bar
+	inline float gIconSizeY = 30.0f;         // size of icon in title bar
+    unsigned int IconTex = 0; // 0 = none
+    static SpxGui::Image iconTex;
+    static unsigned int iconTexID = 0;
 
     // Tool bar
 
@@ -285,11 +288,82 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     inline int dragStartWinX = 0;
     inline int dragStartWinY = 0;
 
+	inline void MenuInit() {
+		if (!gMainWindow) return; // safety check
+       
+        int gx, gy;
+        GLwinGetGlobalCursorPos(gMainWindow, &gx, &gy);
+        gMouseGlobalX = gx;
+        gMouseGlobalY = gy;
+
+        int cox, coy;
+        GLwinGetClientScreenOrigin(gMainWindow, &cox, &coy);
+        gClientScreenX = cox;
+        gClientScreenY = coy;
+
+	}
+    inline bool ImageIconButton(unsigned int texID, float x, float y, float w, float h) {
+        if (!texID) return false;
+
+        // Hover/click detection
+        bool hover = (gMouseX >= x && gMouseX <= x + w &&
+            gMouseY >= y && gMouseY <= y + h);
+        bool clicked = hover && gMousePressed;
+
+        // Background hover highlight
+        if (hover) {
+            DrawRect(x - 2, y - 2, w + 4, h + 4, 0.3f, 0.3f, 0.3f);
+        }
+
+        // Draw the image
+        DrawImage(texID, x, y, w, h);
+
+        return clicked;
+    }
+
     inline void RenderMenuBar() {
         // Draw the bar at the top of the CLIENT area
         // (Your DrawRect uses client coords; that's fine for visuals.)
         DrawRect(0, 0, gScreenW, gMenuBarHeight, 0.15f, 0.15f, 0.17f);
         DrawRect(0, gMenuBarHeight - 1, gScreenW, 1, 0.05f, 0.05f, 0.05f);
+
+		// ----------------------------- Set up a Icon position and size -----------------------------
+		float iconSizeX = gIconSizeX - 8;
+		float iconSizeY = gIconSizeY - 8;
+		float iconY = 4.0f;
+
+        float ir = 0.15f, ig = 0.15f, ib = 1.0f;
+		float iconX = 4.0f; // leave space for icon
+		
+       // DrawRect(iconX, iconY, iconSizeX + 0.1, iconSizeY + 0.1, ir, ig, ib);
+
+        if (iconTexID == 0) {
+            Image iconImg; // LoadTextuer
+            iconTexID = LoadTextuer("../SpxGui/Textures/Icon/SPL_logo.jpg", iconImg);
+        }
+
+        // Draw image if loaded
+        if (iconTexID != 0) {
+            DrawImage(iconTexID, iconX, iconY, iconSizeX, iconSizeY);
+        }
+        
+		// ----------------------------- End of Set up a Icon position and size -----------------------------
+
+		// Load once ---------------------- Tool Bar Icon ----------------------
+        static unsigned int iconTexID = 0;
+        if (iconTexID == 0) {
+            Image iconImg;
+            iconTexID = LoadTextuer("../SpxGui/Textures/Icon/open.jpg", iconImg);
+        }
+
+        // Position (inside titlebar/toolbar)
+        float iconSize = gMenuBarHeight - 8;
+        //float iconX = 40.0f; // leave some space for title
+        //float iconY = 4.0f;
+
+        if (ImageIconButton(iconTexID, iconX + 4, iconY + 30, 25, 25)) {
+            std::cout << "Toolbar icon clicked!\n";
+        }
 
         // --- Close button ---
         float btnSize = gTitleButton - 8.0f; // padding from top/bottom
@@ -725,8 +799,9 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
 
 	// needs to be after all widgets are drawn in main
-    //inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released) {
+   
     inline void NewFrame(float mouseX, float mouseY, bool down, bool pressed, bool released, int fbw, int fbh) {
+   // inline void NewFrame(bool down, bool pressed, bool released, int fbw, int fbh) {
 		g.frameCount++;
 
         gMouseX = mouseX;
@@ -735,13 +810,20 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 		gMousePressed = pressed;
 		gMouseReleased = released;
        
+		gScreenW = fbw;
+		gScreenH = fbh;
 
         for (auto& w : gWindows) { 
-            w.mouseX = mouseX;
-            w.mouseY = mouseY;
-            w.mouseDown = down;
-            w.mousePressed = pressed;
-            w.mouseReleased = released;
+			//w.inWindow = false; // reset each frame
+           w.mouseX = mouseX;
+           w.mouseY = mouseY;
+           w.mouseDown = down;
+           w.mousePressed = pressed;
+           w.mouseReleased = released;
+
+           /* w.mouseDown = gMouseDown;
+            w.mousePressed = gMousePressed;
+            w.mouseReleased = gMouseReleased;*/
         }
 		gInputChars.clear(); // clear input chars each frame
     }

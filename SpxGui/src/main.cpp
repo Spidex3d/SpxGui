@@ -276,6 +276,9 @@ int main() {
 
 		// Draw the top menu bar
 		SpxGui::RenderMenuBar(); // works with your real screen width
+		//SpxGui::RenderToolbar(4, 30, 25);
+
+		SpxGui::activeToolBar(); // handle active tool actions
 
 		SpxGui::Render();  // will render all windows
 

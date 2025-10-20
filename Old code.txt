@@ -1,0 +1,51 @@
+//inline bool ImageIconButton(unsigned int texID, float x, float y, float w, float h) {
+//    if (!texID) return false;
+
+//    // Hover/click detection
+//    bool hover = (gMouseX >= x && gMouseX <= x + w &&
+//        gMouseY >= y && gMouseY <= y + h);
+//    bool clicked = hover && gMousePressed;
+
+//    // Background hover highlight
+//    if (hover) {
+//        DrawRect(x - 2, y - 2, w + 4, h + 4, 0.3f, 0.3f, 0.3f);
+//    }
+
+//    // Draw the image
+//    DrawImage(texID, x, y, w, h);
+
+//    return clicked;
+//}
+
+//float iconSizeX = gIconSizeX - 8;
+        //float iconSizeY = gIconSizeY - 8;
+        //float iconY = 4.0f; // leave some space from top
+        //float iconX = 4.0f; // leave space for icon
+        //
+  //      if (iconTexID == 0) {
+  //          Image iconImg; // LoadTextuer
+  //          iconTexID = LoadTextuer("../SpxGui/Textures/Icon/SPL_logo.jpg", iconImg);
+  //      }
+
+  //      // Draw image if loaded
+  //      if (iconTexID != 0) {
+  //          DrawImage(iconTexID, iconX, iconY, iconSizeX, iconSizeY);
+  //      }
+  //      
+        //// ----------------------------- End of Set up a Icon position and size -----------------------------
+
+        //// Load once ---------------------- Tool Bar Icon ----------------------
+  //      static unsigned int iconTexID = 0;
+  //      if (iconTexID == 0) {
+  //          Image iconImg;
+  //          iconTexID = LoadTextuer("../SpxGui/Textures/Icon/open.jpg", iconImg);
+  //      }
+
+  //      // Position (inside titlebar/toolbar)
+  //      float iconSize = gMenuBarHeight - 8;
+  //      float toolX = 4.0f; // leave some space for title
+        //float toolY = 30.0f; // down from top
+        //// Draw the icon button Icon    xpos  ypos   width height
+  //      if (ImageIconButton(iconTexID, toolX, toolY, 25, 25)) {
+  //          std::cout << "Toolbar icon clicked!\n";
+  //      }

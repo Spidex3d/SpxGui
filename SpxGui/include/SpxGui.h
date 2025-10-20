@@ -215,7 +215,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     Style style;
 
     // ---------------------------------- Struct for storing Image settings -------------------------------------------------
-
+    // needed
     struct Image {
         GLuint textureID = 0;
         int width = 0;
@@ -238,8 +238,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
     //  ------------------------------------------------ New Menu Bar -----------------------------------
     
-    //inline std::string gOpenMenu = ""; // "" means no menu open
-    // 
+     
     // --- Globals ---
     inline int gScreenW = 0;
     inline int gScreenH = 0;
@@ -302,24 +301,152 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         gClientScreenY = coy;
 
 	}
-    inline bool ImageIconButton(unsigned int texID, float x, float y, float w, float h) {
-        if (!texID) return false;
+	// ---------------------------------------- Tool bar Section for Title bar ---------------------------------------
+    struct ToolbarItem {
+        std::string texPath;
+        unsigned int texID = 0;
+        std::string tooltip;    // optional tooltip text
+        bool clicked = false;
+    };
 
-        // Hover/click detection
-        bool hover = (gMouseX >= x && gMouseX <= x + w &&
-            gMouseY >= y && gMouseY <= y + h);
-        bool clicked = hover && gMousePressed;
+    // Global toolbar
+    inline std::vector<ToolbarItem> gToolbar;
+	inline bool gToolbarInitialized = false;
+	inline int gActiveTool = -1; //-1 = none selected
 
-        // Background hover highlight
-        if (hover) {
-            DrawRect(x - 2, y - 2, w + 4, h + 4, 0.3f, 0.3f, 0.3f);
+    // Initialize textures once
+    inline void InitToolbar() {
+        for (auto& item : gToolbar) {
+            Image img;
+            item.texID = LoadTextuer(item.texPath, img);
         }
-
-        // Draw the image
-        DrawImage(texID, x, y, w, h);
-
-        return clicked;
     }
+
+	inline void BuildToolBarResources() {
+        gToolbar.push_back({ "../SpxGui/Textures/Icon/open.jpg", 0, "Open File" });
+        gToolbar.push_back({ "../SpxGui/Textures/Icon/save.jpg",   0, "Save" });
+        gToolbar.push_back({ "../SpxGui/Textures/Icon/save_as.jpg", 0, "Save As" });
+        gToolbar.push_back({ "../SpxGui/Textures/Icon/go.jpg", 0, "Run" });
+        gToolbar.push_back({ "../SpxGui/Textures/Icon/stop.jpg", 0, "Stop" });
+	}
+    
+	inline void InitToolBar() {
+		for (auto& item : gToolbar) {
+            
+            if (item.texID == 0) { // already loaded
+                Image img;
+                item.texID = LoadTextuer(item.texPath, img);
+            }
+		}
+	}
+    inline void EnsureToolbar() {
+		if (!gToolbarInitialized) {
+			BuildToolBarResources();
+			InitToolBar();
+			gToolbarInitialized = true;
+		}
+    }
+    inline void RenderToolbar(float startX, float startY, float iconSize, float spacing = 6.0f) {
+        float x = startX;
+
+        for (int i = 0; i < (int)gToolbar.size(); ++i) {
+            auto& item = gToolbar[i];
+
+            bool hover = (gMouseX >= x && gMouseX <= x + iconSize &&
+                gMouseY >= startY && gMouseY <= startY + iconSize);
+            bool pressed = (hover && gMousePressed);
+
+            // Selected/hover background
+            if (i == gActiveTool) {
+                DrawRect(x - 3, startY - 3, iconSize + 6, iconSize + 6, 0.28f, 0.28f, 0.38f);
+				
+            }
+            else if (hover) {
+                DrawRect(x - 2, startY - 2, iconSize + 4, iconSize + 4, 0.22f, 0.22f, 0.30f);
+            }
+
+            // Icon
+            if (item.texID) DrawImage(item.texID, x, startY, iconSize, iconSize);
+            else            DrawRect(x, startY, iconSize, iconSize, 0.6f, 0.1f, 0.1f);
+
+            // Click handling -> make it the active tool
+            item.clicked = false;
+            if (pressed) {
+                gActiveTool = i;
+                item.clicked = true;
+                // std::cout << "Clicked tool: " << item.tooltip << "\n";
+            }
+
+            x += iconSize + spacing;
+        }
+    }
+	inline std::string filename = "";
+
+    inline void activeToolBar() {
+        if (SpxGui::gActiveTool >= 0) {
+            switch (SpxGui::gActiveTool) {
+            case 0:
+                filename = GLwinOpenDialog();
+                if (!filename.empty()) {
+                    // Save to this file...
+                }
+                std::cout << "Open File action triggered\n";
+                // TODO: add your file open dialog here
+                break;
+
+            case 1:
+                filename = GLwinSaveDialog();
+                if (!filename.empty()) {
+                    // Save to this file...
+                }
+                std::cout << "Save File action triggered\n";
+                // TODO: save current scene/project
+                break;
+
+            case 2:
+                filename = GLwinSaveDialog();
+                if (!filename.empty()) {
+                    // Save to this file...
+                }
+                std::cout << "Save As action triggered\n";
+                break;
+
+            case 3:
+                std::cout << "Run action triggered\n";
+                break;
+
+            case 4:
+                std::cout << "Stop action triggered\n";
+                break;
+            }
+
+            // Reset so it doesn’t keep firing every frame
+            SpxGui::gActiveTool = -1;
+        }
+    }
+
+	// ----------------------------- Text Menu Bar Section ---------------------------------------
+    
+       // --- Struct definition comes first ---
+    //struct MenuItem {
+    //    std::string label;
+    //    std::vector<std::string> subItems;
+    //    bool open = false;
+
+    //    MenuItem(const std::string& lbl,
+    //        const std::vector<std::string>& items,
+    //        bool o = false)
+    //        : label(lbl), subItems(items), open(o) {
+    //    }
+    //};
+
+    //// --- Then your global menu list ---
+    //inline std::vector<MenuItem> gMenuBarItems = {
+    //    MenuItem("File", { "Open", "Save", "Exit" }),
+    //    MenuItem("Edit", { "Undo", "Redo", "Preferences" }),
+    //    MenuItem("Help", { "About", "Docs" })
+    //};
+
 
     inline void RenderMenuBar() {
         // Draw the bar at the top of the CLIENT area
@@ -327,43 +454,92 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         DrawRect(0, 0, gScreenW, gMenuBarHeight, 0.15f, 0.15f, 0.17f);
         DrawRect(0, gMenuBarHeight - 1, gScreenW, 1, 0.05f, 0.05f, 0.05f);
 
-		// ----------------------------- Set up a Icon position and size -----------------------------
-		float iconSizeX = gIconSizeX - 8;
-		float iconSizeY = gIconSizeY - 8;
-		float iconY = 4.0f;
+		// ------------------------------------ Text Menu Items ----------------------
+		//DrawRect(0, 0, gScreenW, gMenuBarHeight, 0.15f, 0.15f, 0.17f);
+  //      float x = 100.0f; // leave some space for your app icon/toolbar
 
-        float ir = 0.15f, ig = 0.15f, ib = 1.0f;
-		float iconX = 4.0f; // leave space for icon
-		
-       // DrawRect(iconX, iconY, iconSizeX + 0.1, iconSizeY + 0.1, ir, ig, ib);
+  //      for (auto& menu : gMenuBarItems) {
+  //          float labelW = CalcTextWidth(menu.label.c_str()) + 20.0f; // padding
+  //          bool hover = (gMouseX >= x && gMouseX <= x + labelW &&
+  //              gMouseY >= 0 && gMouseY <= gMenuBarHeight);
+  //          bool clicked = hover && gMousePressed;
 
+  //          // highlight background
+  //          if (hover || menu.open) {
+  //              DrawRect(x, 0, labelW, gMenuBarHeight, 0.25f, 0.25f, 0.35f);
+  //          }
+
+  //          // draw the label
+  //          DrawText(x + 10, gMenuBarHeight / 2 - g.fontSize / 2, menu.label.c_str(), 1, 1, 1);
+
+  //          // toggle dropdown
+  //          if (clicked) {
+  //              menu.open = !menu.open;
+  //              // close others
+  //              for (auto& other : gMenuBarItems) {
+  //                  if (&other != &menu) other.open = false;
+  //              }
+  //          }
+
+  //          // if open, draw popup
+  //          if (menu.open) {
+  //              float popupX = x;
+  //              float popupY = gMenuBarHeight;
+  //              float popupW = 150.0f;
+  //              float itemH = g.fontSize + 8.0f;
+
+  //              for (size_t i = 0; i < menu.subItems.size(); i++) {
+  //                  float itemY = popupY + i * itemH;
+
+  //                  bool subHover = (gMouseX >= popupX && gMouseX <= popupX + popupW &&
+  //                      gMouseY >= itemY && gMouseY <= itemY + itemH);
+  //                  if (subHover) {
+  //                      DrawRect(popupX, itemY, popupW, itemH, 0.3f, 0.3f, 0.45f);
+  //                  }
+  //                  else {
+  //                      DrawRect(popupX, itemY, popupW, itemH, 0.2f, 0.2f, 0.25f);
+  //                  }
+
+  //                  DrawText(popupX + 8, itemY + 4, menu.subItems[i].c_str(), 1, 1, 1);
+
+  //                  if (subHover && gMousePressed) {
+  //                      std::cout << "Menu clicked: " << menu.label << " -> " << menu.subItems[i] << "\n";
+  //                      menu.open = false; // auto close
+  //                  }
+  //              }
+  //          }
+
+  //          x += labelW;
+  //      }
+    
+
+		// Load once ---------------------- Tool Bar Icon ----------------------
+        
+        // Make sure toolbar exists & textures are loaded (runs once)
+        EnsureToolbar();
+
+        // Draw toolbar (left side)
+        RenderToolbar(6.0f, 30.0f, gMenuBarHeight - 45.0f);
+
+		// --------------------------------- End Tool Bar Icon ----------------------
+
+
+        float iconSizeX = gIconSizeX - 8;
+        float iconSizeY = gIconSizeY - 8;
+        float iconY = 4.0f; // leave some space from top
+        float iconX = 4.0f; // leave space for icon
+		// Load icon if not already
         if (iconTexID == 0) {
             Image iconImg; // LoadTextuer
             iconTexID = LoadTextuer("../SpxGui/Textures/Icon/SPL_logo.jpg", iconImg);
         }
-
         // Draw image if loaded
         if (iconTexID != 0) {
             DrawImage(iconTexID, iconX, iconY, iconSizeX, iconSizeY);
         }
+
         
-		// ----------------------------- End of Set up a Icon position and size -----------------------------
-
-		// Load once ---------------------- Tool Bar Icon ----------------------
-        static unsigned int iconTexID = 0;
-        if (iconTexID == 0) {
-            Image iconImg;
-            iconTexID = LoadTextuer("../SpxGui/Textures/Icon/open.jpg", iconImg);
-        }
-
-        // Position (inside titlebar/toolbar)
-        float iconSize = gMenuBarHeight - 8;
-        //float iconX = 40.0f; // leave some space for title
-        //float iconY = 4.0f;
-
-        if (ImageIconButton(iconTexID, iconX + 4, iconY + 30, 25, 25)) {
-            std::cout << "Toolbar icon clicked!\n";
-        }
+		
 
         // --- Close button ---
         float btnSize = gTitleButton - 8.0f; // padding from top/bottom
@@ -450,18 +626,12 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             int newX = dragStartWinX + deltaX;
             int newY = dragStartWinY + deltaY;
 
-            
-            // Replace the problematic line with the following:
-			//newX = (std::max)(newX, 0); // Use parentheses to avoid macro conflicts
-           // newY = (std::max)(newY, 0); // Use parentheses to avoid macro conflicts
-
             newX = Clamp(newX, 0, gScreenW);
             newY = Clamp(newY, 0, gScreenH);
 
             GLwinSetWindowPos(gMainWindow, newX, newY);
 
-            // std::cout << ">>> Drag MOVE: new=(" << newX << "," << newY
-            //           << ") delta=(" << deltaX << "," << deltaY << ")\n";
+            
         }
     }
 

@@ -203,17 +203,22 @@ namespace SpxGui
 			const char* start = buf;
 			const char* p = buf;
 
-			while (*p) {
-				if (*p == '\n' || *(p + 1) == '\0') {
-					// Copy one line
-					std::string line(start, (p - start) + (*p != '\n' && *(p + 1) == '\0'));
-					gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 6, lineY, 1, 1, 1, line.c_str());
-					lineY += g.fontSize + 2; // line spacing
-					start = p + 1;
-				}
-				p++;
+			if (!buf || buf[0] == '\0') {
+				// empty buffer, draw nothing
 			}
+			else {
 
+				while (*p) {
+					if (*p == '\n' || *(p + 1) == '\0') {
+						// Copy one line
+						std::string line(start, (p - start) + (*p != '\n' && *(p + 1) == '\0'));
+						gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 6, lineY, 1, 1, 1, line.c_str());
+						lineY += g.fontSize + 2; // line spacing
+						start = p + 1;
+					}
+					p++;
+				}
+			}
 			// --- Handle input if active ---
 			if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(buf)) {
 				for (char c : gInputChars) {

@@ -3,6 +3,8 @@
 #include <glad/glad.h>
 #include <iostream>
 
+#include <sstream>
+
 #include "GLwin.h"
 #include "GLwinTime.h"
 #include "GLwinDialog.h"
@@ -10,7 +12,6 @@
 
 #include "../SpxGui.h"
 #include "../SpxGuiWidgets.h"
-
 
 int main() {
 	std::cout << "Hello, SpxGui!" << std::endl;
@@ -144,28 +145,25 @@ int main() {
 			SpxGui::gCurrent->curWinH = tabHeight;
 
 			SpxGui::DrawFileNode(root);
-			//// For now just placeholder content
-			//SpxGui::ColoredLabel(1, 1, 1, "[Project Files]");
-			//SpxGui::Button("main.cpp", treeWidth - 20, 20);
-			//SpxGui::Button("scene.gltf", treeWidth - 20, 20);
-
+			
 			SpxGui::End();
 		}
 
 		// ------------------------------------------------- Main Tab window code -------------------------------------------------
-		// --- Tabs panel (fills rest) ---
-		{
+		
+		
 			SpxGui::Begin("Editor Tabs", nullptr, 11);
 			SpxGui::gCurrent->curWinX = treeWidth;
-			SpxGui::gCurrent->curWinY = SpxGui::gMenuBarHeight;
+			SpxGui::gCurrent->curWinY = SpxGui::gMenuBarHeight;	
 			SpxGui::gCurrent->curWinW = tabWidth;
 			SpxGui::gCurrent->curWinH = tabHeight;
 
 			SpxGui::BeginTabBar("MainTabs");
 
 			if (SpxGui::BeginTabItem("Scene")) {
-				static char buf1[2000] = "Scene data here...";
-				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
+				static char buf1[2000] = "";
+				//SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
+				SpxGui::MultiLineText("EditorBox", SpxGui::textBuffer.data(), SpxGui::textBuffer.size(), tabWidth - 30, tabHeight - 60);
 				SpxGui::EndTabItem();
 			}
 
@@ -184,7 +182,7 @@ int main() {
 			SpxGui::EndTabBar();
 
 			SpxGui::End();
-		}
+	
 		// ---------------------------------------
 				
 		if (showWin1) {
@@ -354,3 +352,5 @@ int main() {
 
 	return 0;
 }
+
+ 

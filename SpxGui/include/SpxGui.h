@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <iostream>
 
+#include <fstream> // Include fstream for file operations
 #include <filesystem>
 namespace fs = std::filesystem;
 
@@ -236,7 +237,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         bool isDir;
         bool expanded = false;
         std::vector<SpxGuiTreeView> children;
-		
+		// jump 603
 	};
 
     // ---------------------------------- Struct for storing Tabs settings -------------------------------------------------
@@ -249,11 +250,23 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 		bool inTabBar = false;
     };
     inline SpxGuiTabBar gTabBar; // only one at a time for now
-    // jump to 801
+    // jump to 600
+	// ----------------------------- ---- Struct for storing Open File settings -------------------------------------------------
+	// this is part of tab
+    struct OpenFile {
+        std::string path;         // full path to file
+        std::string name;         // short name for tab display
+        std::vector<char> buffer; // editable text buffer
+		//std::string buffer;       // editable text buffer
+        bool modified = false;    // track if changed since last save
+    };
+
+    inline std::vector<OpenFile> gOpenFiles;
+    inline int gActiveTab = -1;  // index into gOpenFiles, -1 = none
+
 
     //  ------------------------------------------------ New Menu Bar -----------------------------------
-    
-     
+         
     // --- Globals ---
     inline int gScreenW = 0;
     inline int gScreenH = 0;
@@ -569,15 +582,43 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             
         }
     }
-
-
-    
+        
     inline void UpdateScreenSize(int w, int h) {
         gScreenW = static_cast<float>(w);
         gScreenH = static_cast<float>(h);
     }
 	// --------------------------------------------- Tree view stuff ----------------------------------------------
-    inline Context g;
+    inline Context g;   
+
+    inline void OpenFileInTab(const std::string& path) {
+        // Prevent duplicates
+        for (size_t i = 0; i < gOpenFiles.size(); i++) {
+            if (gOpenFiles[i].path == path) {
+                gActiveTab = (int)i;
+                return;
+            }
+        }
+
+        OpenFile file;
+        file.path = path;
+
+        // extract filename only (for tab title)
+        size_t slash = path.find_last_of("/\\");
+        file.name = (slash == std::string::npos) ? path : path.substr(slash + 1);
+
+        // load file contents
+        std::ifstream in(path);
+        if (in) {
+            std::string content((std::istreambuf_iterator<char>(in)),
+                std::istreambuf_iterator<char>());
+            file.buffer.assign(content.begin(), content.end());
+        }
+        // always null terminate
+        file.buffer.push_back('\0');
+
+        gOpenFiles.push_back(std::move(file));
+        gActiveTab = (int)gOpenFiles.size() - 1;
+    }
    
 	// Load directory structure into SpxGuiTreeView
     inline SpxGuiTreeView LoadDirectory(const std::string& path) {
@@ -600,9 +641,11 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         return root;
     }
 
+    inline  static std::vector<char> textBuffer;
+    // jump up 243
     inline void DrawFileNode(SpxGuiTreeView& node, int indent = 0) {
         float x = gCurrent->cursorX + indent * 16; // indent spacing
-        float y = gCurrent->cursorY;
+		float y = gCurrent->cursorY += g.fontSize - 20; // adjust for font size spacing between items
 
         // Draw triangle indicator for folders
         if (node.isDir) {
@@ -627,12 +670,35 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
                 }
             }
             else {
-                // File clicked → later open in new tab
+                // File clicked → later open in new tab  OpenFileInTab(clickedPath);
                 std::cout << "Open file: " << node.fullPath << "\n";
+
+                if (!node.isDir && clicked) {  // user clicked a file
+                    std::string path = node.fullPath;
+
+                    // Very simple extension check
+                    if (path.ends_with(".txt") || path.ends_with(".spl") || path.ends_with(".splh")) {
+                        std::ifstream file(path);
+                        if (file) {
+                            std::string content((std::istreambuf_iterator<char>(file)),
+                                std::istreambuf_iterator<char>());
+
+                            // Copy into a buffer for MultiLineText
+                           
+                            textBuffer.assign(content.begin(), content.end());
+                            textBuffer.push_back('\0'); // null-terminate
+
+                            
+                        }
+                    }
+                }
+
+
+
             }
         }
 
-        gCurrent->cursorY += 8;
+        gCurrent->cursorY += 20;
 
         // Recurse children
         if (node.isDir && node.expanded) {
@@ -1260,6 +1326,39 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     inline void EndTabBar() {
         gTabBar.inTabBar = false;
     }
+
+    //inline bool BeginTabItem(const char* label) {
+    //    if (!gCurrent || !gTabBar.inTabBar) return false;
+
+    //    int idx = (int)gTabBar.tabs.size();
+    //    gTabBar.tabs.push_back(label);
+
+    //    // --- if no tab is active yet, activate the first one ---
+    //    if (gTabBar.activeTabIndex < 0)
+    //        gTabBar.activeTabIndex = 0;
+
+    //    float tabW = 100.0f; // fixed width for now
+    //    float x = gTabBar.startX + idx * (tabW + 2);
+    //    float y = gTabBar.startY;
+
+    //    bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + tabW &&
+    //        gCurrent->mouseY >= y && gCurrent->mouseY <= y + gTabBar.height);
+    //    bool clicked = (hover && gCurrent->mousePressed);
+
+    //    if (clicked) {
+    //        gTabBar.activeTabIndex = idx;
+    //    }
+
+    //    // style
+    //    float r = (idx == gTabBar.activeTabIndex) ? 0.3f : 0.2f;
+    //    float gcol = (idx == gTabBar.activeTabIndex) ? 0.4f : 0.2f;
+    //    float b = (idx == gTabBar.activeTabIndex) ? 0.6f : 0.2f;
+
+    //    gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, tabW, gTabBar.height, r, gcol, b);
+    //    gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 8, y + g.fontSize * 0.2f, 1, 1, 1, label);
+
+    //    return (idx == gTabBar.activeTabIndex);
+    //}
 
     inline bool BeginTabItem(const char* label) {
         if (!gCurrent || !gTabBar.inTabBar) return false;

@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "glad\glad.h" // Include glad for OpenGL function loading
 #include <vector>
 #include <algorithm>
@@ -10,6 +10,9 @@
 #include "stb\stb_truetype.h" // Include stb_truetype.h for font rendering
 #include <unordered_map>
 #include <iostream>
+
+#include <filesystem>
+namespace fs = std::filesystem;
 
 // Excellent resource for learning OpenGL: https://learnopengl.com/
 // Excellent resource for learning modern OpenGL: https://docs.gl/
@@ -68,6 +71,8 @@ inline void DrawText(float x, float y, const char* txt, float r, float gcol, flo
 inline void Init(int screenW, int screenH);
 inline unsigned int LoadTextuer(const std::string& filename, struct Image& img);
 inline void DrawImage(unsigned int texID, float x, float y, float w, float h);
+inline bool ButtonNew(const char* label, float w, float h);
+inline bool Button(const char* label, float w, float h);
   
 // Text Input related globals
 inline std::string gInputChars;
@@ -78,19 +83,19 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 	// ---------------------------------- Struct for storing style settings -------------------------------------------------
     struct Style {
         float WindowRounding = 0.0f;
-        // menu bar
+        // menu bar color
 		float MenuBarBgR = 0.20f;
 		float MenuBarBgG = 0.20f;
 		float MenuBarBgB = 0.55f;   
-
+		// window background color
         float WindowBgR = 0.15f;
         float WindowBgG = 0.15f;
         float WindowBgB = 0.17f;
-        // top bar
+		// top bar color
 		float WindowTopBarR = 0.25f;
 		float WindowTopBarG = 0.25f;
 		float WindowTopBarB = 0.28f;
-        // top x button
+        // top x button color
         float WindowTopButR = 1.0f;
         float WindowTopButG = 0.25f;
         float WindowTopButB = 0.28f;
@@ -224,6 +229,16 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         GLenum i_format; // later for different image formats
     };
 
+	// ---------------------------------- Struct for storing Tree view settings -------------------------------------------------
+	struct SpxGuiTreeView {
+        std::string name;
+        std::string fullPath;
+        bool isDir;
+        bool expanded = false;
+        std::vector<SpxGuiTreeView> children;
+		
+	};
+
     // ---------------------------------- Struct for storing Tabs settings -------------------------------------------------
     struct SpxGuiTabBar {
 		std::string title;
@@ -302,6 +317,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
 	}
 	// ---------------------------------------- Tool bar Section for Title bar ---------------------------------------
+	 
+	// Bottom Bar
     struct ToolbarItem {
         std::string texPath;
         unsigned int texID = 0;
@@ -309,36 +326,33 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         bool clicked = false;
     };
 
-    // Global toolbar
+	// Global toolbar Bottom bar
     inline std::vector<ToolbarItem> gToolbar;
 	inline bool gToolbarInitialized = false;
 	inline int gActiveTool = -1; //-1 = none selected
+    
 
-    // Initialize textures once
-    inline void InitToolbar() {
-        for (auto& item : gToolbar) {
-            Image img;
-            item.texID = LoadTextuer(item.texPath, img);
-        }
-    }
-
+	// Build Toolbar Resources Bottom Row
 	inline void BuildToolBarResources() {
         gToolbar.push_back({ "../SpxGui/Textures/Icon/open.jpg", 0, "Open File" });
         gToolbar.push_back({ "../SpxGui/Textures/Icon/save.jpg",   0, "Save" });
         gToolbar.push_back({ "../SpxGui/Textures/Icon/save_as.jpg", 0, "Save As" });
         gToolbar.push_back({ "../SpxGui/Textures/Icon/go.jpg", 0, "Run" });
         gToolbar.push_back({ "../SpxGui/Textures/Icon/stop.jpg", 0, "Stop" });
-	}
-    
-	inline void InitToolBar() {
-		for (auto& item : gToolbar) {
-            
+	}   
+
+	// Initialize textures once Bottom Row
+    inline void InitToolBar() {
+        for (auto& item : gToolbar) {
+
             if (item.texID == 0) { // already loaded
                 Image img;
                 item.texID = LoadTextuer(item.texPath, img);
             }
-		}
-	}
+        }
+    }
+
+	// Ensure Toolbar Bottom Row
     inline void EnsureToolbar() {
 		if (!gToolbarInitialized) {
 			BuildToolBarResources();
@@ -346,6 +360,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 			gToolbarInitialized = true;
 		}
     }
+    
+	// Render Toolbar Bottom Row
     inline void RenderToolbar(float startX, float startY, float iconSize, float spacing = 6.0f) {
         float x = startX;
 
@@ -381,7 +397,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         }
     }
 	inline std::string filename = "";
-
+	
+	// Toolbar action handler Bottom Row
     inline void activeToolBar() {
         if (SpxGui::gActiveTool >= 0) {
             switch (SpxGui::gActiveTool) {
@@ -420,109 +437,29 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
                 break;
             }
 
-            // Reset so it doesn’t keep firing every frame
+            // Reset so it doesnâ€™t keep firing every frame
             SpxGui::gActiveTool = -1;
         }
     }
 
 	// ----------------------------- Text Menu Bar Section ---------------------------------------
     
-       // --- Struct definition comes first ---
-    //struct MenuItem {
-    //    std::string label;
-    //    std::vector<std::string> subItems;
-    //    bool open = false;
-
-    //    MenuItem(const std::string& lbl,
-    //        const std::vector<std::string>& items,
-    //        bool o = false)
-    //        : label(lbl), subItems(items), open(o) {
-    //    }
-    //};
-
-    //// --- Then your global menu list ---
-    //inline std::vector<MenuItem> gMenuBarItems = {
-    //    MenuItem("File", { "Open", "Save", "Exit" }),
-    //    MenuItem("Edit", { "Undo", "Redo", "Preferences" }),
-    //    MenuItem("Help", { "About", "Docs" })
-    //};
-
-
     inline void RenderMenuBar() {
         // Draw the bar at the top of the CLIENT area
         // (Your DrawRect uses client coords; that's fine for visuals.)
         DrawRect(0, 0, gScreenW, gMenuBarHeight, 0.15f, 0.15f, 0.17f);
-        DrawRect(0, gMenuBarHeight - 1, gScreenW, 1, 0.05f, 0.05f, 0.05f);
-
-		// ------------------------------------ Text Menu Items ----------------------
-		//DrawRect(0, 0, gScreenW, gMenuBarHeight, 0.15f, 0.15f, 0.17f);
-  //      float x = 100.0f; // leave some space for your app icon/toolbar
-
-  //      for (auto& menu : gMenuBarItems) {
-  //          float labelW = CalcTextWidth(menu.label.c_str()) + 20.0f; // padding
-  //          bool hover = (gMouseX >= x && gMouseX <= x + labelW &&
-  //              gMouseY >= 0 && gMouseY <= gMenuBarHeight);
-  //          bool clicked = hover && gMousePressed;
-
-  //          // highlight background
-  //          if (hover || menu.open) {
-  //              DrawRect(x, 0, labelW, gMenuBarHeight, 0.25f, 0.25f, 0.35f);
-  //          }
-
-  //          // draw the label
-  //          DrawText(x + 10, gMenuBarHeight / 2 - g.fontSize / 2, menu.label.c_str(), 1, 1, 1);
-
-  //          // toggle dropdown
-  //          if (clicked) {
-  //              menu.open = !menu.open;
-  //              // close others
-  //              for (auto& other : gMenuBarItems) {
-  //                  if (&other != &menu) other.open = false;
-  //              }
-  //          }
-
-  //          // if open, draw popup
-  //          if (menu.open) {
-  //              float popupX = x;
-  //              float popupY = gMenuBarHeight;
-  //              float popupW = 150.0f;
-  //              float itemH = g.fontSize + 8.0f;
-
-  //              for (size_t i = 0; i < menu.subItems.size(); i++) {
-  //                  float itemY = popupY + i * itemH;
-
-  //                  bool subHover = (gMouseX >= popupX && gMouseX <= popupX + popupW &&
-  //                      gMouseY >= itemY && gMouseY <= itemY + itemH);
-  //                  if (subHover) {
-  //                      DrawRect(popupX, itemY, popupW, itemH, 0.3f, 0.3f, 0.45f);
-  //                  }
-  //                  else {
-  //                      DrawRect(popupX, itemY, popupW, itemH, 0.2f, 0.2f, 0.25f);
-  //                  }
-
-  //                  DrawText(popupX + 8, itemY + 4, menu.subItems[i].c_str(), 1, 1, 1);
-
-  //                  if (subHover && gMousePressed) {
-  //                      std::cout << "Menu clicked: " << menu.label << " -> " << menu.subItems[i] << "\n";
-  //                      menu.open = false; // auto close
-  //                  }
-  //              }
-  //          }
-
-  //          x += labelW;
-  //      }
-    
+        DrawRect(0, gMenuBarHeight - 1, gScreenW, 1, 0.05f, 0.05f, 0.05f);	
 
 		// Load once ---------------------- Tool Bar Icon ----------------------
         
+        
         // Make sure toolbar exists & textures are loaded (runs once)
-        EnsureToolbar();
+        EnsureToolbar(); // bottom row
 
-        // Draw toolbar (left side)
-        RenderToolbar(6.0f, 30.0f, gMenuBarHeight - 45.0f);
+        // Draw toolbar (left side) bottom row
+        RenderToolbar(6.0f, 30.0f, gMenuBarHeight - 45.0f);       
 
 		// --------------------------------- End Tool Bar Icon ----------------------
-
 
         float iconSizeX = gIconSizeX - 8;
         float iconSizeY = gIconSizeY - 8;
@@ -536,9 +473,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         // Draw image if loaded
         if (iconTexID != 0) {
             DrawImage(iconTexID, iconX, iconY, iconSizeX, iconSizeY);
-        }
-
-        
+        }       
 		
 
         // --- Close button ---
@@ -568,10 +503,10 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             // Toggle maximize / restore
             static bool maximized = false;
             if (maximized) {
-                GLwinRestoreWindow(gMainWindow); // you’ll need to implement this
+                GLwinRestoreWindow(gMainWindow); // youâ€™ll need to implement this
             }
             else {
-                GLwinMaximizeWindow(gMainWindow); // you’ll need to implement this
+                GLwinMaximizeWindow(gMainWindow); // youâ€™ll need to implement this
             }
             maximized = !maximized;
         }
@@ -585,7 +520,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         DrawText(minX + btnSize * 0.3f, btnY + 2, "_", 1, 1, 1);
 
         if (minHover && gMousePressed) {
-            GLwinMinimizeWindow(gMainWindow); // you’ll need to implement this
+            GLwinMinimizeWindow(gMainWindow); // youâ€™ll need to implement this
         }
        
 
@@ -641,6 +576,74 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         gScreenW = static_cast<float>(w);
         gScreenH = static_cast<float>(h);
     }
+	// --------------------------------------------- Tree view stuff ----------------------------------------------
+    inline Context g;
+   
+	// Load directory structure into SpxGuiTreeView
+    inline SpxGuiTreeView LoadDirectory(const std::string& path) {
+        SpxGuiTreeView root;
+        root.name = path;
+        root.fullPath = path;
+        root.isDir = true;
+
+        for (auto& entry : fs::directory_iterator(path)) {
+            SpxGuiTreeView node;
+            node.name = entry.path().filename().string();
+            node.fullPath = entry.path().string();
+            node.isDir = entry.is_directory();
+            if (node.isDir) {
+                // Load empty for now, expand lazily
+            }
+            root.children.push_back(node);
+        }
+
+        return root;
+    }
+
+    inline void DrawFileNode(SpxGuiTreeView& node, int indent = 0) {
+        float x = gCurrent->cursorX + indent * 16; // indent spacing
+        float y = gCurrent->cursorY;
+
+        // Draw triangle indicator for folders
+        if (node.isDir) {
+            const char* arrow = node.expanded ? "-" : "+";// "â–¼" : "â–¶";// "+" : "-";
+            gCurrent->drawList.push_back(DrawCmd(DrawCmd::TEXT, x, y + 20, 1, 0.0f, 0.5f, arrow)); 
+        }                                                                                             
+       
+        // Label (use your GUI button)
+        bool clicked = ButtonNew(node.name.c_str(), 200 - indent * 16, 20);
+        if (clicked) {
+            if (node.isDir) {
+                node.expanded = !node.expanded;
+                if (node.expanded && node.children.empty()) {
+                    // Lazy load children
+                    for (auto& entry : fs::directory_iterator(node.fullPath)) {
+                        SpxGuiTreeView child;
+                        child.name = entry.path().filename().string();
+                        child.fullPath = entry.path().string();
+                        child.isDir = entry.is_directory();
+                        node.children.push_back(child);
+                    }
+                }
+            }
+            else {
+                // File clicked â†’ later open in new tab
+                std::cout << "Open file: " << node.fullPath << "\n";
+            }
+        }
+
+        gCurrent->cursorY += 8;
+
+        // Recurse children
+        if (node.isDir && node.expanded) {
+            for (auto& child : node.children) {
+                DrawFileNode(child, indent + 1);
+            }
+        }
+    }
+
+
+
 
 
 
@@ -749,7 +752,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 	// ----------------------------------------------------- Font & Text Rendering -----------------------------------------------------
       
 
-    inline Context g;
+    
     float CalcTextWidthN(const char* text, int count) {
         float xpos = 0, ypos = 0;
         for (int i = 0; i < count && text[i]; i++) {
@@ -1125,7 +1128,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             }
         }
 
-        // same dragging code as before…
+        // same dragging code as beforeâ€¦
         bool overHeader =
             (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
                 gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);
@@ -1206,7 +1209,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             }
         }
 
-        // same dragging code as before…
+        // same dragging code as beforeâ€¦
         bool overHeader =
             (gCurrent->mouseX >= gCurrent->curWinX && gCurrent->mouseX <= gCurrent->curWinX + gCurrent->curWinW &&
                 gCurrent->mouseY >= gCurrent->curWinY && gCurrent->mouseY <= gCurrent->curWinY + gCurrent->headerHeight);

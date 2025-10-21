@@ -17,7 +17,8 @@ namespace SpxGui
 			gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
 		bool clicked = (hover && gCurrent->mousePressed);
 
-		float r = 0.3f, gcol = 0.3f, b = 0.3f;
+		//float r = 0.3f, gcol = 0.3f, b = 0.3f;
+		float r = 0.15f, gcol = 0.15f, b =  0.17f;
 		if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
 		if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
 

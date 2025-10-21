@@ -31,13 +31,6 @@ int main() {
 
 	GLwinMakeContextCurrent(window);
 
-	/*int fbw, fbh;
-	GLwinGetFramebufferSize(window, &fbw, &fbh);
-	std::cout << "Framebuffer size: " << fbw << " x " << fbh << std::endl;*/
-	
-	/*int w, h;
-	SpxGui::UpdateScreenSize(fbw, fbh);*/
-
 	// for use with Menu bar position
 	//gMainWindow = window; // store pointer to main window for SpxGui
 	SpxGui::gMainWindow = window;
@@ -73,7 +66,7 @@ int main() {
 	std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
 
 	// Gui state variables
-	bool showWin1 = true;
+	bool showWin1 = false;
 	bool showWin2 = false;
 	bool showPopup = false;
 	bool showColWin1 = false;
@@ -86,8 +79,8 @@ int main() {
 	const double targetFPS = 60.0; // or 120.0
 	const double targetFrameTime = 1.0 / targetFPS; // in seconds
 
-	//SpxGui::SetScreenSize(fbw, fbh);
-
+	// tree view test 
+	static SpxGui::SpxGuiTreeView root = SpxGui::LoadDirectory("../");
 	while (!GLwinWindowShouldClose(window, 0)) {
 		double frameStart = GLwinGetTime(); // new timer
 
@@ -110,6 +103,12 @@ int main() {
 
 						
 		SpxGui::MenuInit(); // update mouse pos for menu bar
+
+		// In main loop before creating windows
+		int treeWidth = 250;                // fixed width for tree view
+		int tabWidth = fbw - treeWidth;     // remaining width for tabs
+		int tabHeight = fbh - SpxGui::gMenuBarHeight; // below menu/toolbar
+
 
 		bool downNow = GLwinGetMouseButton(window, GLWIN_MOUSE_BUTTON_LEFT) == GLWIN_PRESS;
 
@@ -135,7 +134,58 @@ int main() {
 		glClearColor(r, g, b, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// ------------GUI Rendering code ------------
+		// ------------GUI Rendering Tree view code ------------
+		{
+			SpxGui::Begin("Spl Solution Explora", nullptr, 10);
+			
+			SpxGui::gCurrent->curWinX = 0;
+			SpxGui::gCurrent->curWinY = SpxGui::gMenuBarHeight;
+			SpxGui::gCurrent->curWinW = treeWidth;
+			SpxGui::gCurrent->curWinH = tabHeight;
+
+			SpxGui::DrawFileNode(root);
+			//// For now just placeholder content
+			//SpxGui::ColoredLabel(1, 1, 1, "[Project Files]");
+			//SpxGui::Button("main.cpp", treeWidth - 20, 20);
+			//SpxGui::Button("scene.gltf", treeWidth - 20, 20);
+
+			SpxGui::End();
+		}
+
+		// ------------------------------------------------- Main Tab window code -------------------------------------------------
+		// --- Tabs panel (fills rest) ---
+		{
+			SpxGui::Begin("Editor Tabs", nullptr, 11);
+			SpxGui::gCurrent->curWinX = treeWidth;
+			SpxGui::gCurrent->curWinY = SpxGui::gMenuBarHeight;
+			SpxGui::gCurrent->curWinW = tabWidth;
+			SpxGui::gCurrent->curWinH = tabHeight;
+
+			SpxGui::BeginTabBar("MainTabs");
+
+			if (SpxGui::BeginTabItem("Scene")) {
+				static char buf1[2000] = "Scene data here...";
+				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
+				SpxGui::EndTabItem();
+			}
+
+			if (SpxGui::BeginTabItem("Lighting")) {
+				float col[3] = { 1,1,0 };
+				SpxGui::ColorBoxLabel("Sun", &col[0], &col[1], &col[2]);
+				SpxGui::EndTabItem();
+			}
+
+			if (SpxGui::BeginTabItem("Settings")) {
+				static char buf2[128] = "Project name";
+				SpxGui::InputText("Name", buf2, sizeof(buf2), 200, 30);
+				SpxGui::EndTabItem();
+			}
+
+			SpxGui::EndTabBar();
+
+			SpxGui::End();
+		}
+		// ---------------------------------------
 				
 		if (showWin1) {
 			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect
@@ -267,21 +317,16 @@ int main() {
 
 			SpxGui::End();
 		}
-
-		
+				
 
 		SpxGui::NewFrame((float)cx, (float)cy, downNow, SpxGui::pressed, SpxGui::released, fbw, fbh);
-		//SpxGui::NewFrame(downNow, SpxGui::pressed, SpxGui::released, fbw, fbh);
-		//SpxGui::NewFrame(SpxGui::gMouseDown, SpxGui::gMousePressed,	SpxGui::gMouseReleased, fbw, fbh);
-
+		
 		// Draw the top menu bar
 		SpxGui::RenderMenuBar(); // works with your real screen width
-		//SpxGui::RenderToolbar(4, 30, 25);
 
-		SpxGui::activeToolBar(); // handle active tool actions
+		SpxGui::activeToolBar(); // handle active tool actions Bottom Row
 
 		SpxGui::Render();  // will render all windows
-
 		
 		// ------------ End of GUI Rendering code ------------
 

@@ -251,7 +251,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     };
     inline SpxGuiTabBar gTabBar; // only one at a time for now
     // jump to 600
-	// ----------------------------- ---- Struct for storing Open File settings -------------------------------------------------
+	// ----------------------------- ---- Struct for storing Open File settings TAB BAR ------------------------------------------
 	// this is part of tab
     struct OpenFile {
         std::string path;         // full path to file

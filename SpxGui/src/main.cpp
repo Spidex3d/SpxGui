@@ -149,7 +149,7 @@ int main() {
 			SpxGui::End();
 		}
 
-		// ------------------------------------------------- Main Tab window code -------------------------------------------------
+		// ------------------------------------------------- Main Editor Tab window code -------------------------------------------------
 		
 		
 			SpxGui::Begin("Editor Tabs", nullptr, 11);
@@ -160,22 +160,22 @@ int main() {
 
 			SpxGui::BeginTabBar("MainTabs");
 
-			if (SpxGui::BeginTabItem("Scene")) {
+			if (SpxGui::BeginTabItem("main.spl")) {
 				static char buf1[2000] = "";
-				//SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
-				SpxGui::MultiLineText("EditorBox", SpxGui::textBuffer.data(), SpxGui::textBuffer.size(), tabWidth - 30, tabHeight - 60);
+				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
+				//SpxGui::MultiLineText("EditorBox", SpxGui::textBuffer.data(), SpxGui::textBuffer.size(), tabWidth - 30, tabHeight - 60);
 				SpxGui::EndTabItem();
 			}
 
-			if (SpxGui::BeginTabItem("Lighting")) {
-				float col[3] = { 1,1,0 };
-				SpxGui::ColorBoxLabel("Sun", &col[0], &col[1], &col[2]);
+			if (SpxGui::BeginTabItem("test.spl")) {
+				static char buf1[2000] = "Some text in this one";
+				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
 				SpxGui::EndTabItem();
 			}
 
-			if (SpxGui::BeginTabItem("Settings")) {
-				static char buf2[128] = "Project name";
-				SpxGui::InputText("Name", buf2, sizeof(buf2), 200, 30);
+			if (SpxGui::BeginTabItem("settings.splh")) {
+				static char buf1[2000] = "And some more text in this one";
+				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
 				SpxGui::EndTabItem();
 			}
 
@@ -183,7 +183,7 @@ int main() {
 
 			SpxGui::End();
 	
-		// ---------------------------------------
+			// --------------------------------------- End Main Editor Tab window code -------------------------------------------------
 				
 		if (showWin1) {
 			SpxGui::Begin("Demo Editor", &showWin1,1);   // will draw rect

@@ -174,6 +174,75 @@ namespace SpxGui
 
 			return clicked;
 		}
+		//new
+		//inline bool MultiLineText(const char* label, std::string& text, float w, float h) {
+		//	if (!gCurrent) return false;
+
+		//	float x = gCurrent->cursorX;
+		//	float y = gCurrent->cursorY;
+
+		//	// Background box
+		//	float r = 0.2f, gcol = 0.2f, b = 0.2f;
+		//	bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
+		//		gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
+		//	bool clicked = (hover && gCurrent->mousePressed);
+		//	if (hover) { r = 0.25f; gcol = 0.25f; b = 0.35f; }
+		//	if (clicked) { r = 0.15f; gcol = 0.3f; b = 0.15f; }
+		//	gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, r, gcol, b);
+
+		//	// Handle focus
+		//	if (clicked) {
+		//		SpxGui::activeTextID = reinterpret_cast<uintptr_t>(&text);
+		//		SpxGui::caretIndex = (int)text.size();
+		//	}
+
+		//	// --- Draw lines ---
+		//	float lineY = y + 4;
+		//	size_t lineStart = 0;
+		//	for (size_t i = 0; i <= text.size(); i++) {
+		//		if (i == text.size() || text[i] == '\n') {
+		//			std::string line = text.substr(lineStart, i - lineStart);
+		//			gCurrent->drawList.emplace_back(
+		//				DrawCmd::TEXT, x + 6, lineY, 1, 1, 1, line.c_str());
+		//			lineY += g.fontSize + 2;
+		//			lineStart = i + 1;
+		//		}
+		//	}
+
+		//	// --- Editing ---
+		//	if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(&text)) {
+		//		for (char c : gInputChars) {
+		//			if (c == 8) { // backspace
+		//				if (SpxGui::caretIndex > 0) {
+		//					text.erase(SpxGui::caretIndex - 1, 1);
+		//					SpxGui::caretIndex--;
+		//				}
+		//			}
+		//			else if (c == '\r' || c == '\n') {
+		//				text.insert(SpxGui::caretIndex, 1, '\n');
+		//				SpxGui::caretIndex++;
+		//			}
+		//			else if (c >= 32 && c < 127) { // printable
+		//				text.insert(SpxGui::caretIndex, 1, c);
+		//				SpxGui::caretIndex++;
+		//			}
+		//		}
+
+		//		// Caret
+		//		std::string before = text.substr(0, SpxGui::caretIndex);
+		//		float caretX = x + 6 + CalcTextWidthN(before.c_str(), (int)before.size());
+		//		float caretY = y + 6; // only correct for first line right now
+		//		gCurrent->drawList.emplace_back(
+		//			DrawCmd::CARET, caretX, caretY, 2, g.fontSize, 1, 1, 1);
+		//	}
+
+		//	gCurrent->cursorY += h + gStyle.ItemSpacingY;
+		//	gCurrent->lastItemW = w;
+		//	gCurrent->lastItemH = h;
+
+		//	return clicked;
+		//}
+
 
 		inline bool MultiLineText(const char* label, char* buf, size_t buf_size, float w, float h) {
 			if (!gCurrent) return false;
@@ -194,8 +263,11 @@ namespace SpxGui
 			// Handle focus
 			if (clicked) {
 				SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
+				SpxGui::activeBuf = buf ? buf : (char*)"";   // fallback to empty string
+				SpxGui::caretIndex = (buf && *buf) ? (int)strlen(buf) : 0;
+				/*SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
 				SpxGui::activeBuf = buf;
-				SpxGui::caretIndex = strlen(buf);
+				SpxGui::caretIndex = strlen(buf);*/
 			}
 
 			// --- Draw buffer content, split by newline ---

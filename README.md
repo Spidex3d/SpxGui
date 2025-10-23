@@ -8,5 +8,8 @@ I'm using Visual studio 2022, glad, GLwin, glm, stb
 This projects aim is to make my own gui which works with my GLwin project but should work with GLFW.
 Only works on Windows.
 
+ ✨ Project SpxGui with custom title bar
+![image_alt](https://github.com/Spidex3d/SpxGui/blob/540c4d159a44cf29c63ac010a4f72055bacfff78/SpxGui/Textures/GitHub/custom_titlebar.jpg)
+
  ✨ Project SpxGui 
 ![image_alt](https://github.com/Spidex3d/SpxGui/blob/fee8ec2f0c31906c87cc39a51a42dc9d5e281088/SpxGui/Textures/GitHub/main_image.jpg)

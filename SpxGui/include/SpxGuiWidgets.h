@@ -108,7 +108,7 @@ namespace SpxGui
 
     
 	// ----------------------------------------------- Input Text Section ---------------------------------------
-	
+		// new InputText And working backspace, delete, caret
 		inline bool InputText(const char* label, char* buf, size_t buf_size, float w, float h) {
 			if (!gCurrent) return false;
 
@@ -119,30 +119,25 @@ namespace SpxGui
 				gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
 			bool clicked = (hover && gCurrent->mousePressed);
 
-			// Highlight colors
-			float r = 0.3f, gcol = 0.3f, b = 0.3f;
-			if (hover) { r = 0.4f; gcol = 0.4f; b = 0.6f; }
-			if (clicked) { r = 0.2f; gcol = 0.6f; b = 0.2f; }
+			// Background
+			gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, 0.2f, 0.2f, 0.2f);
 
-			
-			// Handle focus
+			// Focus
 			if (clicked) {
 				SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
 				SpxGui::activeBuf = buf;
-				SpxGui::caretIndex = strlen(buf);
+				SpxGui::caretIndex = (int)strlen(buf);
 			}
 
-			// Record background rect
-			gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, r, gcol, b);
-
-			// Record text content
+			// Draw text
 			gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 6, y + 4, 1, 1, 1, buf);
 
-			// Handle typed characters if this text box is active
+			// Handle input
 			if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(buf)) {
 				for (char c : gInputChars) {
-					if (c == 8) { // backspace
-						size_t len = strlen(buf);
+					size_t len = strlen(buf);
+
+					if (c == 8) { // Backspace
 						if (SpxGui::caretIndex > 0 && len > 0) {
 							memmove(buf + SpxGui::caretIndex - 1,
 								buf + SpxGui::caretIndex,
@@ -150,8 +145,15 @@ namespace SpxGui
 							SpxGui::caretIndex--;
 						}
 					}
-					else if (c >= 32 && c < 127) { // printable
-						size_t len = strlen(buf);
+					else if (c == 46) { // Delete set to dot key for easier testing as 127 will not work!
+					//else if (c == 127 || c == 46) { // Delete
+						if (SpxGui::caretIndex < (int)len) {
+							memmove(buf + SpxGui::caretIndex,
+								buf + SpxGui::caretIndex + 1,
+								len - SpxGui::caretIndex);
+						}
+					}
+					else if (c >= 32 && c < 126) { // Printable
 						if (len + 1 < buf_size) {
 							memmove(buf + SpxGui::caretIndex + 1,
 								buf + SpxGui::caretIndex,
@@ -164,195 +166,99 @@ namespace SpxGui
 
 				// Caret
 				float caretX = x + 6 + CalcTextWidthN(buf, SpxGui::caretIndex);
-				gCurrent->drawList.emplace_back(DrawCmd(DrawCmd::CARET, caretX, y + 6, 2, g.fontSize, 1, 1, 1));
+				gCurrent->drawList.emplace_back(DrawCmd::CARET, caretX, y + 6, 2, g.fontSize, 1, 1, 1);
 			}
 
-			
 			gCurrent->cursorY += h + gStyle.ItemSpacingY;
 			gCurrent->lastItemW = w;
 			gCurrent->lastItemH = h;
 
 			return clicked;
 		}
-		//new
-		//inline bool MultiLineText(const char* label, std::string& text, float w, float h) {
-		//	if (!gCurrent) return false;
 
-		//	float x = gCurrent->cursorX;
-		//	float y = gCurrent->cursorY;
-
-		//	// Background box
-		//	float r = 0.2f, gcol = 0.2f, b = 0.2f;
-		//	bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
-		//		gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
-		//	bool clicked = (hover && gCurrent->mousePressed);
-		//	if (hover) { r = 0.25f; gcol = 0.25f; b = 0.35f; }
-		//	if (clicked) { r = 0.15f; gcol = 0.3f; b = 0.15f; }
-		//	gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, r, gcol, b);
-
-		//	// Handle focus
-		//	if (clicked) {
-		//		SpxGui::activeTextID = reinterpret_cast<uintptr_t>(&text);
-		//		SpxGui::caretIndex = (int)text.size();
-		//	}
-
-		//	// --- Draw lines ---
-		//	float lineY = y + 4;
-		//	size_t lineStart = 0;
-		//	for (size_t i = 0; i <= text.size(); i++) {
-		//		if (i == text.size() || text[i] == '\n') {
-		//			std::string line = text.substr(lineStart, i - lineStart);
-		//			gCurrent->drawList.emplace_back(
-		//				DrawCmd::TEXT, x + 6, lineY, 1, 1, 1, line.c_str());
-		//			lineY += g.fontSize + 2;
-		//			lineStart = i + 1;
-		//		}
-		//	}
-
-		//	// --- Editing ---
-		//	if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(&text)) {
-		//		for (char c : gInputChars) {
-		//			if (c == 8) { // backspace
-		//				if (SpxGui::caretIndex > 0) {
-		//					text.erase(SpxGui::caretIndex - 1, 1);
-		//					SpxGui::caretIndex--;
-		//				}
-		//			}
-		//			else if (c == '\r' || c == '\n') {
-		//				text.insert(SpxGui::caretIndex, 1, '\n');
-		//				SpxGui::caretIndex++;
-		//			}
-		//			else if (c >= 32 && c < 127) { // printable
-		//				text.insert(SpxGui::caretIndex, 1, c);
-		//				SpxGui::caretIndex++;
-		//			}
-		//		}
-
-		//		// Caret
-		//		std::string before = text.substr(0, SpxGui::caretIndex);
-		//		float caretX = x + 6 + CalcTextWidthN(before.c_str(), (int)before.size());
-		//		float caretY = y + 6; // only correct for first line right now
-		//		gCurrent->drawList.emplace_back(
-		//			DrawCmd::CARET, caretX, caretY, 2, g.fontSize, 1, 1, 1);
-		//	}
-
-		//	gCurrent->cursorY += h + gStyle.ItemSpacingY;
-		//	gCurrent->lastItemW = w;
-		//	gCurrent->lastItemH = h;
-
-		//	return clicked;
-		//}
-
-
-		inline bool MultiLineText(const char* label, char* buf, size_t buf_size, float w, float h) {
+		// new MultiLineText
+		inline bool MultiLineText(const char* label, std::string& text, float w, float h) {
 			if (!gCurrent) return false;
 
 			float x = gCurrent->cursorX;
 			float y = gCurrent->cursorY;
 
-			bool hover = (gCurrent->mouseX >= x && gCurrent->mouseX <= x + w &&
-				gCurrent->mouseY >= y && gCurrent->mouseY <= y + h);
-			bool clicked = (hover && gCurrent->mousePressed);
+			bool hover = (gMouseX >= x && gMouseX <= x + w &&
+				gMouseY >= y && gMouseY <= y + h);
+			bool clicked = (hover && gMousePressed);
 
-			// Background box
-			float r = 0.2f, gcol = 0.2f, b = 0.2f;
-			if (hover) { r = 0.25f; gcol = 0.25f; b = 0.35f; }
-			if (clicked) { r = 0.15f; gcol = 0.3f; b = 0.15f; }
-			gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, r, gcol, b);
+			// Background
+			gCurrent->drawList.emplace_back(DrawCmd::RECT, x, y, w, h, 0.2f, 0.2f, 0.2f);
 
-			// Handle focus
+			// --- focus ---
 			if (clicked) {
-				SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
-				SpxGui::activeBuf = buf ? buf : (char*)"";   // fallback to empty string
-				SpxGui::caretIndex = (buf && *buf) ? (int)strlen(buf) : 0;
-				/*SpxGui::activeTextID = reinterpret_cast<uintptr_t>(buf);
-				SpxGui::activeBuf = buf;
-				SpxGui::caretIndex = strlen(buf);*/
+				SpxGui::activeTextID = reinterpret_cast<uintptr_t>(&text);
+				SpxGui::caretIndex = (int)text.size(); // caret at end
 			}
 
-			// --- Draw buffer content, split by newline ---
+			// --- draw text ---
 			float lineY = y + 4;
-			const char* start = buf;
-			const char* p = buf;
-
-			if (!buf || buf[0] == '\0') {
-				// empty buffer, draw nothing
-			}
-			else {
-
-				while (*p) {
-					if (*p == '\n' || *(p + 1) == '\0') {
-						// Copy one line
-						std::string line(start, (p - start) + (*p != '\n' && *(p + 1) == '\0'));
-						gCurrent->drawList.emplace_back(DrawCmd::TEXT, x + 6, lineY, 1, 1, 1, line.c_str());
-						lineY += g.fontSize + 2; // line spacing
-						start = p + 1;
-					}
-					p++;
+			{
+				std::stringstream ss(text);
+				std::string line;
+				while (std::getline(ss, line)) {
+					gCurrent->drawList.emplace_back(
+						DrawCmd(DrawCmd::TEXT, x + 6, lineY, 1, 1, 1, line.c_str())
+					);
+					lineY += g.fontSize + 2;
+				}
+				if (text.size() && text.back() == '\n') {
+					gCurrent->drawList.emplace_back(
+						DrawCmd(DrawCmd::TEXT, x + 6, lineY, 1, 1, 1, "")
+					);
 				}
 			}
-			// --- Handle input if active ---
-			if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(buf)) {
+
+			// --- input handling ---
+			if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(&text)) {
+				// text insertion/deletion
 				for (char c : gInputChars) {
 					if (c == 8) { // backspace
-						size_t len = strlen(buf);
-						if (SpxGui::caretIndex > 0 && len > 0) {
-							memmove(buf + SpxGui::caretIndex - 1,
-								buf + SpxGui::caretIndex,
-								len - SpxGui::caretIndex + 1);
+						if (SpxGui::caretIndex > 0) {
+							text.erase(SpxGui::caretIndex - 1, 1);
 							SpxGui::caretIndex--;
 						}
 					}
+					else if (c == 46 || c == 127) { // delete
+						if (SpxGui::caretIndex < (int)text.size()) {
+							text.erase(SpxGui::caretIndex, 1);
+						}
+					}
 					else if (c == '\r' || c == '\n') {
-						size_t len = strlen(buf);
-						if (len + 1 < buf_size) {
-							memmove(buf + SpxGui::caretIndex + 1,
-								buf + SpxGui::caretIndex,
-								len - SpxGui::caretIndex + 1);
-							buf[SpxGui::caretIndex] = '\n';
-							SpxGui::caretIndex++;
-						}
+						text.insert(SpxGui::caretIndex, 1, '\n');
+						SpxGui::caretIndex++;
 					}
-					
-					else if (c >= 32 && c < 127) { // printable
-						size_t len = strlen(buf);
-						if (len + 1 < buf_size) {
-							memmove(buf + SpxGui::caretIndex + 1,
-								buf + SpxGui::caretIndex,
-								len - SpxGui::caretIndex + 1);
-							buf[SpxGui::caretIndex] = c;
-							SpxGui::caretIndex++;
-						}
+					else if (c >= 32 && c < 127) {
+						text.insert(SpxGui::caretIndex, 1, c);
+						SpxGui::caretIndex++;
 					}
 				}
-				// --- Caret drawing ---
-				if (SpxGui::activeTextID == reinterpret_cast<uintptr_t>(buf)) {
-					int line = 0;
-					int col = 0;
 
-					// Find caret line/col by scanning buffer
-					for (int i = 0; i < SpxGui::caretIndex; i++) {
-						if (buf[i] == '\n') {
-							line++;
-							col = 0;
-						}
-						else {
-							col++;
-						}
-					}
+				// handle arrow/home/end via gInputKeys
+				//HandleTextEditing(text, SpxGui::caretIndex);
 
-					float caretX = x + 6 + CalcTextWidthN(buf + (SpxGui::caretIndex - col), col);
-					float caretY = y + 4 + line * (g.fontSize + 2);
+				
 
-					
-					// Blink: show only if (frameCount / 30) % 2 == 0  (about 0.5s at 60 FPS)
-					if ((g.frameCount / 10) % 2 == 0) {
-						//GLWIN_LOG_ERROR("Something went wrong with opengl: " << g.frameCount);
-						gCurrent->drawList.emplace_back(
-							DrawCmd::CARET, caretX, caretY, 2, g.fontSize, 1, 1, 1
-						);
-					}
+				// --- draw caret ---
+				int line = 0, col = 0;
+				for (int i = 0; i < SpxGui::caretIndex && i < (int)text.size(); i++) {
+					if (text[i] == '\n') { line++; col = 0; }
+					else col++;
 				}
+
+				float caretX = x + 6 + CalcTextWidthN(text.c_str() + (SpxGui::caretIndex - col), col);
+				float caretY = y + 4 + line * (g.fontSize + 2);
+
+				if ((g.frameCount / 30) % 2 == 0) {
+					gCurrent->drawList.emplace_back(DrawCmd::CARET, caretX, caretY, 2, g.fontSize, 1, 1, 1);
+				}
+
+				
 			}
 
 			gCurrent->cursorY += h + gStyle.ItemSpacingY;
@@ -361,8 +267,6 @@ namespace SpxGui
 
 			return clicked;
 		}
-
-			
 
 	// ----------------------------------------------- Drag Float Section ---------------------------------------
 
@@ -967,3 +871,55 @@ namespace SpxGui
 	}
 
 } // namespace MyNamespace
+
+
+// handle arrow keys (from AddKeyPress style)
+				/*for (int key : gInputKeys) {
+					switch (key) {
+					case GLWIN_BACKSPACE:
+						if (SpxGui::caretIndex > 0) {
+							text.erase(SpxGui::caretIndex - 1, 1);
+							SpxGui::caretIndex--;
+							SpxGui::gInputKeys.push_back(key);
+						}
+						break;
+					case GLWIN_DELETE:
+						if (SpxGui::caretIndex < (int)text.size()) {
+							text.erase(SpxGui::caretIndex, 1);
+						}
+						break;
+					case GLWIN_LEFT:
+						if (SpxGui::caretCol > 0) SpxGui::caretCol--;
+						else if (SpxGui::caretRow > 0) {
+							SpxGui::caretRow--;
+							SpxGui::caretCol = (int)lines[SpxGui::caretRow].size();
+						}
+						break;
+					case GLWIN_RIGHT:
+						if (SpxGui::caretCol < (int)lines[SpxGui::caretRow].size())
+							SpxGui::caretCol++;
+						else if (SpxGui::caretRow < (int)lines.size() - 1) {
+							SpxGui::caretRow++;
+							SpxGui::caretCol = 0;
+						}
+						break;
+					case GLWIN_UP:
+						if (SpxGui::caretRow > 0) {
+							SpxGui::caretRow--;
+							SpxGui::caretCol = (std::min)(SpxGui::caretCol, (int)lines[SpxGui::caretRow].size());
+						}
+						break;
+					case GLWIN_DOWN:
+						if (SpxGui::caretRow < (int)lines.size() - 1) {
+							SpxGui::caretRow++;
+							SpxGui::caretCol = (std::min)(SpxGui::caretCol, (int)lines[SpxGui::caretRow].size());
+						}
+						break;
+					case GLWIN_HOME:
+						SpxGui::caretCol = 0;
+						break;
+					case GLWIN_END:
+						SpxGui::caretCol = (int)lines[SpxGui::caretRow].size();
+						break;
+					}
+				}*/

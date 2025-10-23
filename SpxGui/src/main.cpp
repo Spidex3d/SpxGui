@@ -82,6 +82,9 @@ int main() {
 
 	// tree view test 
 	static SpxGui::SpxGuiTreeView root = SpxGui::LoadDirectory("../");
+
+	//SpxGui::OpenFileInTab("../test.spl");
+
 	while (!GLwinWindowShouldClose(window, 0)) {
 		double frameStart = GLwinGetTime(); // new timer
 
@@ -131,6 +134,25 @@ int main() {
 			GLwinWindowShouldClose(window, 1);
 		}
 
+		//if (GLwinGetKey(window, GLWIN_LEFT) == GLWIN_PRESS) {
+		//	SpxGui::gInputKeys.push_back(GLWIN_LEFT);
+		//}
+		//if (GLwinGetKey(window, GLWIN_RIGHT) == GLWIN_PRESS) {
+		//	SpxGui::gInputKeys.push_back(GLWIN_RIGHT);
+		//}
+
+		/*if (SpxGui::keyPressed == GLWIN_RIGHT)  SpxGui::gInputKeys.push_back(GLWIN_RIGHT);
+		if (keyPressed == GLWIN_HOME)   SpxGui::gInputKeys.push_back(GLWIN_HOME);
+		if (keyPressed == GLWIN_END)    SpxGui::gInputKeys.push_back(GLWIN_END);
+		if (keyPressed == GLWIN_UP)     SpxGui::gInputKeys.push_back(GLWIN_UP);
+		if (keyPressed == GLWIN_DOWN)   SpxGui::gInputKeys.push_back(GLWIN_DOWN);*/
+
+		// Delete (note: 127 on Unix, VK_DELETE on Windows)
+		//if (keyPressed == GLWIN_DELETE) SpxGui::gInputKeys.push_back(127);
+
+
+
+
 		//glClearColor(0.17f, 0.17f, 0.18f, 1.0f);
 		glClearColor(r, g, b, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -150,7 +172,7 @@ int main() {
 		}
 
 		// ------------------------------------------------- Main Editor Tab window code -------------------------------------------------
-		
+			
 		
 			SpxGui::Begin("Editor Tabs", nullptr, 11);
 			SpxGui::gCurrent->curWinX = treeWidth;
@@ -158,28 +180,24 @@ int main() {
 			SpxGui::gCurrent->curWinW = tabWidth;
 			SpxGui::gCurrent->curWinH = tabHeight;
 
-			SpxGui::BeginTabBar("MainTabs");
+			if (SpxGui::BeginTabBar("Editors")) {
+				for (size_t i = 0; i < SpxGui::gOpenFiles.size(); i++) {
+					auto& f = SpxGui::gOpenFiles[i];
+					if (SpxGui::BeginTabItem(f.name.c_str())) {
+						SpxGui::gActiveTab = (int)i;
+						static char buf1[100] = "Input Text";  // make a writable buffer
+						SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
+						// Pass the file’s buffer to editor
+						SpxGui::MultiLineText(f.name.c_str(),
+							f.buffer,
+							tabWidth - 30,
+							tabHeight - 60);
 
-			if (SpxGui::BeginTabItem("main.spl")) {
-				static char buf1[2000] = "";
-				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
-				//SpxGui::MultiLineText("EditorBox", SpxGui::textBuffer.data(), SpxGui::textBuffer.size(), tabWidth - 30, tabHeight - 60);
-				SpxGui::EndTabItem();
+						SpxGui::EndTabItem();
+					}
+				}
+				SpxGui::EndTabBar();
 			}
-
-			if (SpxGui::BeginTabItem("test.spl")) {
-				static char buf1[2000] = "Some text in this one";
-				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
-				SpxGui::EndTabItem();
-			}
-
-			if (SpxGui::BeginTabItem("settings.splh")) {
-				static char buf1[2000] = "And some more text in this one";
-				SpxGui::MultiLineText("SceneEditor", buf1, sizeof(buf1), tabWidth - 30, tabHeight - 60);
-				SpxGui::EndTabItem();
-			}
-
-			SpxGui::EndTabBar();
 
 			SpxGui::End();
 	
@@ -192,6 +210,7 @@ int main() {
 			static unsigned int bgTex = SpxGui::LoadTextuer("../SpxGui/Textures/background.jpg", bgImg);
 			SpxGui::gCurrent->backgroundTex = bgTex;   //  set per-window background
 
+			
 			if (SpxGui::ButtonNew("Add Tabs", 100, 30)) {
 				tabNew = true;
 			}
@@ -219,7 +238,7 @@ int main() {
 			SpxGui::InputText("Text Name", (char*)buf1, sizeof(buf1), 200, 30);
 						
 			static char buf[1000] = "Input Text";  // make a writable buffer
-			SpxGui::MultiLineText("Text Name_01", (char*)buf, sizeof(buf), 200, 200);
+			//SpxGui::MultiLineText("Text Name_01", (char*)buf, sizeof(buf), 200, 200);
 
 			
 			SpxGui::SeparatorText("Light Properties", 200);
@@ -299,7 +318,7 @@ int main() {
 			SpxGui::BeginTabBar("MainTabs");
 			if (SpxGui::BeginTabItem("Scene")) {
 				static char tabbuf[1000] = "Input Text";  // make a writable buffer
-				SpxGui::MultiLineText("Text Name_01", (char*)tabbuf, sizeof(tabbuf), 200, 200);
+				//SpxGui::MultiLineText("Text Name_01", (char*)tabbuf, sizeof(tabbuf), 200, 200);
 				SpxGui::EndTabItem();
 			}
 			if (SpxGui::BeginTabItem("Lighting")) {

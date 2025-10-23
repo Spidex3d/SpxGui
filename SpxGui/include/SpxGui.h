@@ -76,15 +76,22 @@ inline bool ButtonNew(const char* label, float w, float h);
 inline bool Button(const char* label, float w, float h);
   
 // Text Input related globals
-inline std::string gInputChars;
+inline std::string gInputChars; // characters input this frame
 inline uintptr_t activeTextID = 0; // ID of the active text box focus
+inline int caretCol = 0;     // caretCol for single-line text boxes
+inline int caretRow = 0;     // caretRow for multi-line text boxes
+// special keys like backspace, delete, arrows input
+inline std::vector<int> gInputKeys; // This for handling special keys like backspace, delete, arrows
+
+
 inline int caretIndex = 0;   // caretIndex cursor position in the active text buffer (caret = carage return)
 inline char* activeBuf = nullptr; // later for multiple text boxes
+
 
 	// ---------------------------------- Struct for storing style settings -------------------------------------------------
     struct Style {
         float WindowRounding = 0.0f;
-        // menu bar color
+		// menu bar color gui background
 		float MenuBarBgR = 0.20f;
 		float MenuBarBgG = 0.20f;
 		float MenuBarBgB = 0.55f;   
@@ -92,7 +99,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         float WindowBgR = 0.15f;
         float WindowBgG = 0.15f;
         float WindowBgB = 0.17f;
-		// top bar color
+		// top bar color gui header
 		float WindowTopBarR = 0.25f;
 		float WindowTopBarG = 0.25f;
 		float WindowTopBarB = 0.28f;
@@ -237,7 +244,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         bool isDir;
         bool expanded = false;
         std::vector<SpxGuiTreeView> children;
-		// jump 603
+		// jump 646
 	};
 
     // ---------------------------------- Struct for storing Tabs settings -------------------------------------------------
@@ -250,14 +257,24 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 		bool inTabBar = false;
     };
     inline SpxGuiTabBar gTabBar; // only one at a time for now
+    std::string editorText;
     // jump to 600
 	// ----------------------------- ---- Struct for storing Open File settings TAB BAR ------------------------------------------
 	// this is part of tab
+
+    void LoadFile(const std::string& path) {
+        std::ifstream ifs(path);
+        std::stringstream ss;
+        ss << ifs.rdbuf();
+        editorText = ss.str();
+    }
+
+
     struct OpenFile {
         std::string path;         // full path to file
         std::string name;         // short name for tab display
-        std::vector<char> buffer; // editable text buffer
-		//std::string buffer;       // editable text buffer
+        //std::vector<char> buffer; // editable text buffer
+		std::string buffer;       // editable text buffer for multi-line text
         bool modified = false;    // track if changed since last save
     };
 
@@ -611,11 +628,9 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         if (in) {
             std::string content((std::istreambuf_iterator<char>(in)),
                 std::istreambuf_iterator<char>());
-            file.buffer.assign(content.begin(), content.end());
+            file.buffer = content;   // assign directly
         }
-        // always null terminate
-        file.buffer.push_back('\0');
-
+        
         gOpenFiles.push_back(std::move(file));
         gActiveTab = (int)gOpenFiles.size() - 1;
     }
@@ -678,18 +693,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
                     // Very simple extension check
                     if (path.ends_with(".txt") || path.ends_with(".spl") || path.ends_with(".splh")) {
-                        std::ifstream file(path);
-                        if (file) {
-                            std::string content((std::istreambuf_iterator<char>(file)),
-                                std::istreambuf_iterator<char>());
-
-                            // Copy into a buffer for MultiLineText
-                           
-                            textBuffer.assign(content.begin(), content.end());
-                            textBuffer.push_back('\0'); // null-terminate
-
-                            
-                        }
+						OpenFileInTab(path);
+                        
                     }
                 }
 
@@ -708,14 +713,8 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         }
     }
 
-
-
-
-
-
 	// ------------------------------------------------- Text Input  ----------------------------------------------
    
-
     inline void AddInputChar(unsigned int c) {
 
         if (c >= 32 && c < 127) { // only printable ASCII for now
@@ -730,23 +729,34 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
         }
     }
 
+
     inline void AddKeyPress(int key) {
         if (!activeBuf) return; // no active input
 
         switch (key) {
         case GLWIN_LEFT:
             if (SpxGui::caretIndex > 0) caretIndex--;
+            SpxGui::gInputKeys.push_back(key);
             break;
         case GLWIN_RIGHT: {
             int len = (int)strlen(activeBuf);
             if (caretIndex < len) caretIndex++;
+            SpxGui::gInputKeys.push_back(key);
             break;
         }
+		case GLWIN_UP:
+            SpxGui::gInputKeys.push_back(key);
+            break;
+		case GLWIN_DOWN:
+            SpxGui::gInputKeys.push_back(key);
+            break;
         case GLWIN_HOME:
             caretIndex = 0;
+            SpxGui::gInputKeys.push_back(key);
             break;
         case GLWIN_END:
             caretIndex = (int)strlen(activeBuf);
+            SpxGui::gInputKeys.push_back(key);
             break;
         }
     }
@@ -755,16 +765,16 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
     inline void CharCallback(unsigned int codepoint) {
         SpxGui::AddInputChar(codepoint);
     }
-
+    
     inline void KeyCallback(int key, int action) {
         if (action == GLWIN_PRESS) {
             SpxGui::AddKeyPress(key);
 
-        if (key == GLWIN_RETURN) {
+        }
+         if (key == GLWIN_RETURN) {
             SpxGui::AddInputChar('\n');   // inject newline into text buffer
 
-        }
-        }
+         }
     }
    
 	// ----------------------------------------------------------- Test Area -----------------------------------------------------------
@@ -1065,6 +1075,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
             w.mouseReleased = gMouseReleased;*/
         }
 		gInputChars.clear(); // clear input chars each frame
+		gInputKeys.clear(); // clear input keys each frame
     }
 	Style gStyle; // global style instance
 
@@ -1310,8 +1321,9 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
 	// ----------------------------------------------------------- Tabs -----------------------------------------------------------
 
-    inline void BeginTabBar(const char* title) {
-        if (!gCurrent) return;
+    //inline void BeginTabBar(const char* title) {
+    inline bool BeginTabBar(const char* title) {
+        if (!gCurrent) return false;
         gTabBar.title = title;
         gTabBar.tabs.clear();
         gTabBar.startX = gCurrent->cursorX;
@@ -1321,6 +1333,7 @@ inline char* activeBuf = nullptr; // later for multiple text boxes
 
         // move cursor below tabs
         gCurrent->cursorY += gTabBar.height + gStyle.ItemSpacingY;
+		return true;
     }
 
     inline void EndTabBar() {
